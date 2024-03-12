@@ -1,0 +1,160 @@
+html {
+    font-size: 16px;
+    font-family: "Roboto", sans-serif;
+    font-style: normal;
+    text-align: center;
+    background-image: linear-gradient(to bottom right, rgba(164, 226, 252, 20), rgba(235, 184, 255, 20));
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    overflow: auto;
+}
+
+body {
+    margin: 0;
+}
+
+table,
+th,
+td {
+    border: 1px solid;
+    border-collapse: collapse;
+}
+
+table {
+    margin: auto;
+    font-weight: 300;
+    table-layout: fixed;
+}
+
+th,
+td {
+    width: 30px;
+    height: 30px;
+}
+
+header,
+#div-content,
+footer {
+    width: 80%;
+    margin: 0 auto;
+    background-color: white;
+}
+
+header {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+h1 {
+    margin: 0;
+    padding: 20px 0;
+    font-weight: 900;
+    font-size: 3em;
+}
+
+#div-map,
+#div-setup,
+#div-start,
+#div-path {
+    margin: 0 20px;
+}
+
+#setup-instruct,
+#path-instruct,
+#countdown-text {
+    margin: 0;
+    font-size: 1.5em;
+    padding: 20px 0 50px;
+}
+
+#countdown-text {
+    color: red;
+    padding-top: 0px;
+}
+
+#div-directions {
+    margin: 0 auto 30px;
+    max-width: 600px;
+    padding-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#div-path {
+    display: none;
+}
+
+#div-play {
+    margin: 0 auto 30px;
+    padding: 0 20px 30px;
+}
+
+#div-directions>button,
+#div-play>button {
+    font-size: 1.5em;
+    padding: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+#div-directions>button:hover,
+#button-play:hover {
+    background-color: rgba(235, 184, 255, 20);
+}
+
+/* start button */
+#div-start {
+    display: none;
+}
+
+#div-start>button {
+    font-size: 1.5em;
+    padding: 20px;
+    margin-top: 30px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    background-color: rgb(235, 184, 255)
+}
+
+#div-start>button:hover {
+    background-color: rgb(217, 120, 255);
+}
+
+/* map setup */
+.no-border {
+    border: 1px solid white;
+}
+
+.no-border-y {
+    border-top: 1px solid white;
+    border-left: 1px solid white;
+    border-bottom: 1px solid white;
+}
+
+.no-border-x {
+    border: 1px solid white;
+}
+
+/* footer */
+footer {
+    padding: 20px 0;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    margin-bottom: 30px;
+}
+
+footer>p {
+    color: grey;
+    text-align: right;
+    margin: 0 20px 0 0;
+}
+
+/* warning message for zoom */
+#warningMsg {
+    color: red;
+    font-weight: bold;
+    font-size: 2em;
+    margin: 0;
+}
