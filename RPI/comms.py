@@ -20,7 +20,8 @@ logLevel = logging.DEBUG     # logging.INFO - normal run, logging.DEBUG - for de
 ### GLOBALS ###
 
 robotPos = [2,2,'N']            # occupying bottom left corner (9 squares)
-api_ip = "192.168.5.29"         # min's computer IP
+# api_ip = "192.168.5.29"         # min's computer IP
+api_ip = "192.168.5.22"           # yen's computer IP
 
 ### CODES ###
 
@@ -380,13 +381,13 @@ class Brain:
                 if command.startswith("FW"):
                     logging.debug("FW")
                     distance = int(command[2:])
-                    send_str = "wx{:03d}".format(distance*10)
+                    send_str = "wx{:03d}".format(distance*10+5)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
                 elif command.startswith("BW"):
                     logging.debug("BW")
                     distance = int(command[2:])
-                    send_str = "sx{:03d}".format(distance*10)
+                    send_str = "sx{:03d}".format(distance*10-5)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
 
@@ -394,16 +395,16 @@ class Brain:
                 # TODO: edit codes to send STM for turns if doing 3 pt or 5 pt
                 elif command.startswith("FL"):
                     logging.debug("FL")
-                    self.stm_sendq.put("fa076")
+                    self.stm_sendq.put("fa079")
                 elif command.startswith("FR"):
                     logging.debug("FR")
-                    self.stm_sendq.put("fd073")
+                    self.stm_sendq.put("fd076")
                 elif command.startswith("BL"):
                     logging.debug("BL")
-                    self.stm_sendq.put("ba075")
+                    self.stm_sendq.put("ba079")
                 elif command.startswith("BR"):
                     logging.debug("BR")
-                    self.stm_sendq.put("bd074")
+                    self.stm_sendq.put("bd082")
 
                 ## Others
                 elif command.startswith("TP"):

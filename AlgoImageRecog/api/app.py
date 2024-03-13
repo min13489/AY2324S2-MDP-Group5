@@ -33,9 +33,16 @@ modelMode = True   # True for Yen, False for CR
 if modelMode:
     yolo = YOLO("yen_3_a.pt")
 
+def resetEnv():
+    fileList = os.listdir("../images/boxed")
+    for file in fileList:
+        if file.startswith("OBS"):
+            os.remove("../images/boxed/{}".format(file))
+
 # ROUTE - to test if API is up
 @app.route("/")
 def hello():
+    resetEnv()
     return "API is up and running\n"
 
 # ROUTE - to retrieve path from algo
@@ -45,7 +52,7 @@ def getPath():
         data = request.get_json()
         path, states = generatePath(data["robotPos"], data["obs"])
         print(states)
-        path = ["BW03", "BR00", "BW04", "BL00"]
+        # path = ["BW03", "BR00", "BW04", "BL00"]
         return jsonify({"path": path, "states": states}), 200
 
 # ROUTE - to retrieve id from image recog
@@ -125,9 +132,10 @@ def testImage():
 @app.route('/stitch-image', methods=["GET"])
 def stitchImage():
     if request.method == "GET":
-        os.remove("..\images\\boxed\stitched.jpg")
+        if os.path.exists("../images/boxed/stitched.jpg"):
+            os.remove("../images/boxed/stitched.jpg")
 
-        img_paths = glob.glob("..\images\\boxed\*.jpg")
+        img_paths = glob.glob("../images/boxed/OBS*.jpg")
         images = [Image.open(x) for x in img_paths]
         width, height = zip(*(i.size for i in images))
         total_width = sum(width)

@@ -3,10 +3,14 @@ import numpy as np
 from python_tsp.exact import solve_tsp_dynamic_programming
 
 # variables for turning radius
-fwd_row = 3     # 30 30 increment
-fwd_col = 3
-bwd_row = 3     # 30 20 increment
-bwd_col = 2
+fwd_l_row = 3   # 30 30 increment for FL
+fwd_l_col = 3
+fwd_r_row = 2   # 20 30 increment for FR
+fwd_r_col = 3
+bwd_l_row = 3   # 30 20 increment for BL
+bwd_l_col = 3
+bwd_r_row = 3   # 30 10 increment for BR
+bwd_r_col = 1
 
 # initialise map
 
@@ -332,33 +336,33 @@ def getPathAndCost(states):
             if curPos[2] == 'N':
                 newPos.append((curPos[0]+1, curPos[1], curPos[2])) # fw
                 newPos.append((curPos[0]-1, curPos[1], curPos[2])) # bw
-                newPos.append((curPos[0]+fwd_row, curPos[1]-fwd_col, 'W')) # fl
-                newPos.append((curPos[0]-bwd_row, curPos[1]-bwd_col, 'E')) # bl
-                newPos.append((curPos[0]+fwd_row, curPos[1]+fwd_col, 'E')) # fr
-                newPos.append((curPos[0]-bwd_row, curPos[1]+bwd_col, 'W')) # br
+                newPos.append((curPos[0]+fwd_l_row, curPos[1]-fwd_l_col, 'W')) # fl
+                newPos.append((curPos[0]-bwd_l_row, curPos[1]-bwd_l_col, 'E')) # bl
+                newPos.append((curPos[0]+fwd_r_row, curPos[1]+fwd_r_col, 'E')) # fr
+                newPos.append((curPos[0]-bwd_r_row, curPos[1]+bwd_r_col, 'W')) # br
             elif curPos[2] == "S":
                 newPos.append((curPos[0]-1, curPos[1], curPos[2])) # fw
                 newPos.append((curPos[0]+1, curPos[1], curPos[2])) # bw
-                newPos.append((curPos[0]-fwd_row, curPos[1]+fwd_col, 'E')) # fl
-                newPos.append((curPos[0]+bwd_row, curPos[1]+bwd_col, 'W')) # bl
-                newPos.append((curPos[0]-fwd_row, curPos[1]-fwd_col, 'W')) # fr
-                newPos.append((curPos[0]+bwd_row, curPos[1]-bwd_col, 'E')) # br
+                newPos.append((curPos[0]-fwd_l_row, curPos[1]+fwd_l_col, 'E')) # fl
+                newPos.append((curPos[0]+bwd_l_row, curPos[1]+bwd_l_col, 'W')) # bl
+                newPos.append((curPos[0]-fwd_r_row, curPos[1]-fwd_r_col, 'W')) # fr
+                newPos.append((curPos[0]+bwd_r_row, curPos[1]-bwd_r_col, 'E')) # br
 
             # changes in row and col swapped for E and W facing
             elif curPos[2] == "E":
                 newPos.append((curPos[0], curPos[1]+1, curPos[2])) # fw
                 newPos.append((curPos[0], curPos[1]-1, curPos[2])) # bw
-                newPos.append((curPos[0]+fwd_col, curPos[1]+fwd_row, 'N')) # fl
-                newPos.append((curPos[0]+bwd_col, curPos[1]-bwd_row, 'S')) # bl
-                newPos.append((curPos[0]-fwd_col, curPos[1]+fwd_row, 'S')) # fr
-                newPos.append((curPos[0]-bwd_col, curPos[1]-bwd_row, 'N')) # br
+                newPos.append((curPos[0]+fwd_l_col, curPos[1]+fwd_l_row, 'N')) # fl
+                newPos.append((curPos[0]+bwd_l_col, curPos[1]-bwd_l_row, 'S')) # bl
+                newPos.append((curPos[0]-fwd_r_col, curPos[1]+fwd_r_row, 'S')) # fr
+                newPos.append((curPos[0]-bwd_r_col, curPos[1]-bwd_r_row, 'N')) # br
             elif curPos[2] == "W":
                 newPos.append((curPos[0], curPos[1]-1, curPos[2])) # fw
                 newPos.append((curPos[0], curPos[1]+1, curPos[2])) # bw
-                newPos.append((curPos[0]-fwd_col, curPos[1]-fwd_row, 'S')) # fl
-                newPos.append((curPos[0]-bwd_col, curPos[1]+bwd_row, 'N')) # bl
-                newPos.append((curPos[0]+fwd_col, curPos[1]-fwd_row, 'N')) # fr
-                newPos.append((curPos[0]+bwd_col, curPos[1]+bwd_row, 'S')) # br
+                newPos.append((curPos[0]-fwd_l_col, curPos[1]-fwd_l_row, 'S')) # fl
+                newPos.append((curPos[0]-bwd_l_col, curPos[1]+bwd_l_row, 'N')) # bl
+                newPos.append((curPos[0]+fwd_r_col, curPos[1]-fwd_r_row, 'N')) # fr
+                newPos.append((curPos[0]+bwd_r_col, curPos[1]+bwd_r_row, 'S')) # br
 
             for pos in newPos:
                 safeCost = isLegalAndSafe(curPos, pos)
