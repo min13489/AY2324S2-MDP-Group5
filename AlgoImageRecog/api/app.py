@@ -31,7 +31,7 @@ CORS(app)
 # SETUP - image recog
 modelMode = True   # True for Yen, False for CR
 if modelMode:
-    yolo = YOLO("yen_3_a.pt")
+    yolo = YOLO("yen_3_a.pt", )
 
 def resetEnv():
     fileList = os.listdir("../images/boxed")
@@ -73,7 +73,7 @@ def testImage():
         if modelMode:   # yen's model
             try:
                 # predict the id of image
-                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False)
+                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False, device='cpu')
                 # results = yolo("../images/{}.jpg".format(recvDateTime))
 
                 # if no issues with prediction
