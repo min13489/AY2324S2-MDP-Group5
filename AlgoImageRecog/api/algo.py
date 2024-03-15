@@ -3,7 +3,7 @@ import numpy as np
 from python_tsp.exact import solve_tsp_dynamic_programming
 
 # variables for turning radius
-fwd_l_row = 3   # 30 40 increment for FL
+fwd_l_row = 2   # 30 40 increment for FL
 fwd_l_col = 4
 fwd_r_row = 2   # 20 30 increment for FR
 fwd_r_col = 3
@@ -575,6 +575,7 @@ def scondenser(states):
         # bef and aft states are the same - goal reached
         if curState == prevState:
             toRemove.append(i-1)  # remove a dup
+        
         # same direction
         elif curState[2] == prevState[2]:
             if curState[2] == 'N' or curState[2] == 'S':

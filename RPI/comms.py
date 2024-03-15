@@ -21,7 +21,8 @@ logLevel = logging.DEBUG     # logging.INFO - normal run, logging.DEBUG - for de
 
 robotPos = [2,2,'N']            # occupying bottom left corner (9 squares)
 # api_ip = "192.168.5.29"         # min's computer IP
-api_ip = "192.168.5.22"           # yen's computer IP
+# api_ip = "192.168.5.22"         # yen's computer IP
+api_ip = "192.168.5.23"         # dext's computer IP
 
 ### CODES ###
 
@@ -353,9 +354,12 @@ class Brain:
             logging.debug("msg: {}".format(msg))
             if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
                 try:
-                    currentPos = self.state_queue.get()
+                    try:
+                        currentPos = self.state_queue.get()
+                        self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                    except queue.Empty:
+                        pass
                     # logging.debug(str(currentPos))
-                    self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
                     sleep(2)
                     self.movement_lock.release()
                 except Exception as e:
@@ -379,32 +383,25 @@ class Brain:
                 logging.debug(command)
                 
                 if command.startswith("FW"):
-                    logging.debug("FW")
                     distance = int(command[2:])
                     send_str = "wx{:03d}".format(distance*10)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
                 elif command.startswith("BW"):
-                    logging.debug("BW")
                     distance = int(command[2:])
                     send_str = "sx{:03d}".format(distance*10)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
 
                 ## TURN movements
-                # TILED: 75, 74, 
                 elif command.startswith("FL"):
-                    logging.debug("FL")
-                    self.stm_sendq.put("fa075")
+                    self.stm_sendq.put("fa085")
                 elif command.startswith("FR"):
-                    logging.debug("FR")
-                    self.stm_sendq.put("fd074")
+                    self.stm_sendq.put("fd083")
                 elif command.startswith("BL"):
-                    logging.debug("BL")
-                    self.stm_sendq.put("ba074")
+                    self.stm_sendq.put("ba085")
                 elif command.startswith("BR"):
-                    logging.debug("BR")
-                    self.stm_sendq.put("bd078")
+                    self.stm_sendq.put("bd083")
 
                 ## Others
                 elif command.startswith("TP"):
@@ -523,7 +520,7 @@ class Brain:
                     for command in commands:
                         self.commandq.put(command)
                     self.commandq.put("FIN")
-                    for state in states:
+                    for state in states[1:]:
                         self.state_queue.put(state)
                     self.path_obtained.set()
                 
