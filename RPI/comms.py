@@ -15,7 +15,8 @@ import base64, picamera
 ### SWITCHES ###
 
 obstacleCourse = 1           # 1 - obstacle course 0 - fastest car
-logLevel = logging.DEBUG     # logging.INFO - normal run, logging.DEBUG - for debug msgs
+# logLevel = logging.INFO      # logging.INFO - normal run
+logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
 ### GLOBALS ###
 
@@ -129,10 +130,6 @@ class STMSerial:
     def send(self, msg):
         self.serial_link.write(msg.strip().encode(encoding="ascii"))
         logging.debug("stm msg sent: {}".format(msg))
-    
-    def warmup(self):
-        self.send("wx021")
-        logging.debug("warmed up with wx021")
 
     def receive(self):
         try:
@@ -354,11 +351,8 @@ class Brain:
             logging.debug("msg: {}".format(msg))
             if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
                 try:
-                    try:
-                        currentPos = self.state_queue.get()
-                        self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                    except queue.Empty:
-                        pass
+                    currentPos = self.state_queue.get()
+                    self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
                     # logging.debug(str(currentPos))
                     sleep(2)
                     self.movement_lock.release()
@@ -397,7 +391,7 @@ class Brain:
                 elif command.startswith("FL"):
                     self.stm_sendq.put("fa085")
                 elif command.startswith("FR"):
-                    self.stm_sendq.put("fd083")
+                    self.stm_sendq.put("fd076")
                 elif command.startswith("BL"):
                     self.stm_sendq.put("ba085")
                 elif command.startswith("BR"):
@@ -405,10 +399,8 @@ class Brain:
 
                 ## Others
                 elif command.startswith("TP"):
-                    logging.debug("TP")
                     self.rpi_queue.put(command)
                 elif command.startswith("FIN"):
-                    logging.debug("FIN")
                     self.movement_lock.release()
                     logging.info("path ended")
                     sleep(5)
