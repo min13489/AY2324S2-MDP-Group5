@@ -356,6 +356,7 @@ class Brain:
                     currentPos = self.state_queue.get()
                     # logging.debug(str(currentPos))
                     self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                    sleep(2)
                     self.movement_lock.release()
                 except Exception as e:
                     print(e)
@@ -522,7 +523,7 @@ class Brain:
                     for command in commands:
                         self.commandq.put(command)
                     self.commandq.put("FIN")
-                    for state in states[1:]:
+                    for state in states:
                         self.state_queue.put(state)
                     self.path_obtained.set()
                 
