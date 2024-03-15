@@ -73,7 +73,7 @@ def testImage():
         if modelMode:   # yen's model
             try:
                 # predict the id of image
-                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False, device='cpu')
+                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False)
                 # results = yolo("../images/{}.jpg".format(recvDateTime))
 
                 # if no issues with prediction

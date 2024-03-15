@@ -356,7 +356,6 @@ class Brain:
                     currentPos = self.state_queue.get()
                     # logging.debug(str(currentPos))
                     self.android.send("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                    sleep(2)
                     self.movement_lock.release()
                 except Exception as e:
                     print(e)
@@ -381,13 +380,13 @@ class Brain:
                 if command.startswith("FW"):
                     logging.debug("FW")
                     distance = int(command[2:])
-                    send_str = "wx{:03d}".format(distance*10+5)
+                    send_str = "wx{:03d}".format(distance*10)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
                 elif command.startswith("BW"):
                     logging.debug("BW")
                     distance = int(command[2:])
-                    send_str = "sx{:03d}".format(distance*10-5)
+                    send_str = "sx{:03d}".format(distance*10)
                     logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
 
@@ -398,10 +397,10 @@ class Brain:
                     self.stm_sendq.put("fa079")
                 elif command.startswith("FR"):
                     logging.debug("FR")
-                    self.stm_sendq.put("fd076")
+                    self.stm_sendq.put("fd075")
                 elif command.startswith("BL"):
                     logging.debug("BL")
-                    self.stm_sendq.put("ba079")
+                    self.stm_sendq.put("ba078")
                 elif command.startswith("BR"):
                     logging.debug("BR")
                     self.stm_sendq.put("bd082")
