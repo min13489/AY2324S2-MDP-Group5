@@ -355,7 +355,7 @@ class Brain:
                 try:
                     currentPos = self.state_queue.get()
                     # logging.debug(str(currentPos))
-                    self.android.send("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                    self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
                     self.movement_lock.release()
                 except Exception as e:
                     print(e)
@@ -391,19 +391,19 @@ class Brain:
                     self.stm_sendq.put(send_str)
 
                 ## TURN movements
-                # TODO: edit codes to send STM for turns if doing 3 pt or 5 pt
+                # TILED: 75, 74, 
                 elif command.startswith("FL"):
                     logging.debug("FL")
-                    self.stm_sendq.put("fa079")
+                    self.stm_sendq.put("fa075")
                 elif command.startswith("FR"):
                     logging.debug("FR")
-                    self.stm_sendq.put("fd075")
+                    self.stm_sendq.put("fd074")
                 elif command.startswith("BL"):
                     logging.debug("BL")
-                    self.stm_sendq.put("ba078")
+                    self.stm_sendq.put("ba074")
                 elif command.startswith("BR"):
                     logging.debug("BR")
-                    self.stm_sendq.put("bd082")
+                    self.stm_sendq.put("bd078")
 
                 ## Others
                 elif command.startswith("TP"):
