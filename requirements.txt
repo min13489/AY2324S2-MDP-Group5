@@ -3,8 +3,6 @@ comet_ml==3.39.0
 coremltools==7.1
 Flask==2.2.2
 Flask_Cors==4.0.0
-GitPython==3.1.41
-GitPython==3.1.42
 ipython==8.12.3
 matplotlib==3.7.5
 mss==9.0.1
