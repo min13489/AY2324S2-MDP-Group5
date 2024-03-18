@@ -119,10 +119,9 @@ def testImage():
                     id = firstClass[2:]     # remove 'id' prefix
 
                     # draw the bounding box
-                    # TODO: find out how to newline for the label
-                    labels = ["{}\nImage id={}\nConf={:.2f}".format(imageNameMap[id], firstClass, firstConf)]       # label with name, id and conf
-                    detections = sv.Detections.from_ultralytics(results[0])[0]                                      # for drawing of box - only consider first one
-                    image = cv2.imread("../images/{}.jpg".format(recvDateTime))                                     # actual image
+                    labels = ["{} Image id={}".format(imageNameMap[id], id)]       # label with name and id
+                    detections = sv.Detections.from_ultralytics(results[0])[0]     # for drawing of box - only consider first one
+                    image = cv2.imread("../images/{}.jpg".format(recvDateTime))    # actual image
                     bounding_box_annotator = sv.BoundingBoxAnnotator()
                     label_annotator = sv.LabelAnnotator()
                     annotated_image = bounding_box_annotator.annotate(scene=image, detections=detections)                               # draw box

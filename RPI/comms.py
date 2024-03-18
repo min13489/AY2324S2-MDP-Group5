@@ -168,6 +168,8 @@ class Brain:
             self.obs_queue = self.manager.Queue()               # queue - obs list
             self.state_queue = self.manager.Queue()             # queue - states list
             self.commandq = self.manager.Queue()                # queue - commands
+            self.inserting = self.manager.Event()               # event - command insertion
+            self.duplicating = self.manager.Event()             # event - state duplication
         else:
             self.arrow_recog = self.manager.Event()             # event - arrow recognised
 
@@ -352,7 +354,8 @@ class Brain:
             if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
                 try:
                     currentPos = self.state_queue.get()
-                    self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                    if currentPos != "KEEP":
+                        self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
                     # logging.debug(str(currentPos))
                     sleep(2)
                     self.movement_lock.release()
@@ -361,6 +364,10 @@ class Brain:
                     logging.error("tried to release a released lock")
 
     def robotRun(self):
+        prevFL = False
+        prevFR = False
+        prevBL = False
+        prevBR = False
         while True:
             try:
                 # get command
@@ -382,23 +389,69 @@ class Brain:
                 if command.startswith("FW"):
                     distance = int(command[2:])
                     send_str = "wx{:03d}".format(distance*10)
-                    logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
+                elif command.startswith("wx"):
+                    self.stm_sendq.put(command)
                 elif command.startswith("BW"):
                     distance = int(command[2:])
                     send_str = "sx{:03d}".format(distance*10)
-                    logging.debug("sent: {}".format(send_str))
                     self.stm_sendq.put(send_str)
+                elif command.startswith("sx"):
+                    self.stm_sendq.put(command)
 
                 ## TURN movements
                 elif command.startswith("FL"):
-                    self.stm_sendq.put("fa063")
+                    if prevFL:
+                        self.stm_sendq.put("fa090")
+                        prevFL = False
+                    else:
+                        prevFL = True
+                        self.insertCommand(["wx005","FL00","wx003"])
+                        self.inserting.wait()
+                        self.inserting.clear()
+                        self.dupStates(1,2)
+                        self.duplicating.wait()
+                        self.duplicating.clear()
+                        self.movement_lock.release()
                 elif command.startswith("FR"):
-                    self.stm_sendq.put("fd065")
+                    if prevFR:
+                        self.stm_sendq.put("fd090")
+                        prevFR = False
+                    else:
+                        prevFR = True
+                        self.insertCommand(["wx006","FR00","sx006"])
+                        self.inserting.wait()
+                        self.inserting.clear()
+                        self.dupStates(1,2)
+                        self.duplicating.wait()
+                        self.duplicating.clear()
+                        self.movement_lock.release()
                 elif command.startswith("BL"):
-                    self.stm_sendq.put("ba064")
+                    if prevBL:
+                        self.stm_sendq.put("ba090")
+                        prevBL = False
+                    else:
+                        prevBL = True
+                        self.insertCommand(["sx003","BL00"])
+                        self.inserting.wait()
+                        self.inserting.clear()
+                        self.dupStates(1,1)
+                        self.duplicating.wait()
+                        self.duplicating.clear()
+                        self.movement_lock.release()
                 elif command.startswith("BR"):
-                    self.stm_sendq.put("bd064")
+                    if prevBR:
+                        self.stm_sendq.put("bd090")
+                        prevBR = False
+                    else:
+                        prevBR = True
+                        self.insertCommand(["sx004","BR00","wx002"])
+                        self.inserting.wait()
+                        self.inserting.clear()
+                        self.dupStates(1,2)
+                        self.duplicating.wait()
+                        self.duplicating.clear()
+                        self.movement_lock.release()
 
                 ## Others
                 elif command.startswith("TP"):
@@ -599,6 +652,35 @@ class Brain:
                         self.movement_lock.release()
             except KeyboardInterrupt:
                 break
+
+    def insertCommand(self, commands):
+        logging.debug("inserting commands")
+        while not self.commandq.empty():
+            command = self.commandq.get()
+            commands.append(command)
+        # logging.debug(commands)
+        for command in commands:
+            self.commandq.put(command)
+        self.inserting.set()
+
+    def dupStates(self, prev, next):
+        logging.debug("duplicating states")
+        states = []
+        first = True
+        while not self.state_queue.empty():
+            state = self.state_queue.get()
+            if first:
+                for i in range(prev):
+                    states.append("KEEP")
+                for i in range(next):
+                    states.append(state)
+                first = False
+            else:
+                states.append(state)
+        for state in states:
+            self.state_queue.put(state)
+        self.duplicating.set()
+
                     
 if __name__ == "__main__":
     logging.basicConfig(level=logLevel,format="[%(levelname)s] %(funcName)s - %(message)s")
