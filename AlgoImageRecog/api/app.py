@@ -32,6 +32,39 @@ CORS(app)
 modelMode = True   # True for Yen, False for CR
 if modelMode:
     yolo = YOLO("yen_3_a.pt", )
+imageNameMap = {
+    "11": "Number 1",
+    "12": "Number 2",
+    "13": "Number 3",
+    "14": "Number 4",
+    "15": "Number 5",
+    "16": "Number 6",
+    "17": "Number 7",
+    "18": "Number 8",
+    "19": "Number 9",
+    "20": "Alphabet A",
+    "21": "Alphabet B",
+    "22": "Alphabet C",
+    "23": "Alphabet D",
+    "24": "Alphabet E",
+    "25": "Alphabet F",
+    "26": "Alphabet G",
+    "27": "Alphabet H",
+    "28": "Alphabet S",
+    "29": "Alphabet T",
+    "30": "Alphabet U",
+    "31": "Alphabet V",
+    "32": "Alphabet W",
+    "33": "Alphabet X",
+    "34": "Alphabet Y",
+    "35": "Alphabet Z",
+    "36": "Up arrow",
+    "37": "Down arrow",
+    "38": "Right arrow",
+    "39": "Left arrow",
+    "40": "Stop",
+    "99": "Bull's eye"
+}
 
 def resetEnv():
     fileList = os.listdir("../images/boxed")
@@ -86,9 +119,10 @@ def testImage():
                     id = firstClass[2:]     # remove 'id' prefix
 
                     # draw the bounding box
-                    labels = ["{} {:.2f}".format(firstClass, firstConf)]            # label with id and conf
-                    detections = sv.Detections.from_ultralytics(results[0])[0]      # for drawing of box - only consider first one
-                    image = cv2.imread("../images/{}.jpg".format(recvDateTime))     # actual image
+                    # TODO: find out how to newline for the label
+                    labels = ["{}\nImage id={}\nConf={:.2f}".format(imageNameMap[id], firstClass, firstConf)]       # label with name, id and conf
+                    detections = sv.Detections.from_ultralytics(results[0])[0]                                      # for drawing of box - only consider first one
+                    image = cv2.imread("../images/{}.jpg".format(recvDateTime))                                     # actual image
                     bounding_box_annotator = sv.BoundingBoxAnnotator()
                     label_annotator = sv.LabelAnnotator()
                     annotated_image = bounding_box_annotator.annotate(scene=image, detections=detections)                               # draw box
@@ -132,10 +166,18 @@ def testImage():
 @app.route('/stitch-image', methods=["GET"])
 def stitchImage():
     if request.method == "GET":
+        # remove previously stitched image, if any
         if os.path.exists("../images/boxed/stitched.jpg"):
             os.remove("../images/boxed/stitched.jpg")
 
+        # retrieve all OBS images
         img_paths = glob.glob("../images/boxed/OBS*.jpg")
+
+        # if no images to stitch
+        if len(img_paths) == 0: 
+            return "nothing to stitch\n"
+
+        # stitching
         images = [Image.open(x) for x in img_paths]
         width, height = zip(*(i.size for i in images))
         total_width = sum(width)

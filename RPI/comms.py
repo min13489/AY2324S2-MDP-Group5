@@ -21,9 +21,9 @@ logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 ### GLOBALS ###
 
 robotPos = [2,2,'N']            # occupying bottom left corner (9 squares)
-# api_ip = "192.168.5.29"         # min's computer IP
+api_ip = "192.168.5.29"         # min's computer IP
 # api_ip = "192.168.5.22"         # yen's computer IP
-api_ip = "192.168.5.23"         # dext's computer IP
+# api_ip = "192.168.5.23"         # dext's computer IP
 
 ### CODES ###
 
@@ -371,7 +371,10 @@ class Brain:
                 
                 # get permissions
                 self.movement_lock.acquire()
-
+                
+                # DEBUG
+                logging.debug("note issue and move to by right location")
+                sleep(3)
                 # command reading
                 ## FW and BW movements
                 logging.debug(command)
@@ -389,13 +392,13 @@ class Brain:
 
                 ## TURN movements
                 elif command.startswith("FL"):
-                    self.stm_sendq.put("fa085")
+                    self.stm_sendq.put("fa063")
                 elif command.startswith("FR"):
-                    self.stm_sendq.put("fd076")
+                    self.stm_sendq.put("fd065")
                 elif command.startswith("BL"):
-                    self.stm_sendq.put("ba085")
+                    self.stm_sendq.put("ba064")
                 elif command.startswith("BR"):
-                    self.stm_sendq.put("bd083")
+                    self.stm_sendq.put("bd064")
 
                 ## Others
                 elif command.startswith("TP"):
@@ -454,8 +457,12 @@ class Brain:
                 # case A - take picture
                 if task.startswith("TP"):
                     logging.debug("taking picture")
-                    obsNo = int(task[2:])
+                    
+                    # DEBUG - skip taking pictures
+                    logging.debug("SKIPPING PICTURES")
 
+                    obsNo = int(task[2:])
+                    '''
                     # capturing image
                     with picamera.PiCamera() as camera:
                         camera.resolution = (640,640)
@@ -485,7 +492,8 @@ class Brain:
                     else:
                         logging.error("API cannot detect image")
                         self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
-                    
+                    '''
+                    self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
                     # start moving again
                     self.send_pic.wait()
                     self.send_pic.clear()
