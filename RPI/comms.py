@@ -380,8 +380,8 @@ class Brain:
                 self.movement_lock.acquire()
                 
                 # DEBUG
-                logging.debug("note issue and move to by right location")
-                sleep(3)
+                # logging.debug("note issue and move to by right location")
+                # sleep(3)
                 # command reading
                 ## FW and BW movements
                 logging.debug(command)
