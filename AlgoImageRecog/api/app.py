@@ -32,6 +32,7 @@ CORS(app)
 modelMode = True   # True for Yen, False for CR
 if modelMode:
     yolo = YOLO("yen_3_a.pt")
+    # yolo = YOLO("yen_2_b.pt")
 imageNameMap = {
     "11": "Number 1",
     "12": "Number 2",

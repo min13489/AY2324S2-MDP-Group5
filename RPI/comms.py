@@ -14,7 +14,7 @@ import base64, picamera
 
 ### SWITCHES ###
 
-obstacleCourse = 1           # 1 - obstacle course 0 - fastest car
+obstacleCourse = 0           # 1 - obstacle course 0 - fastest car
 # logLevel = logging.INFO      # logging.INFO - normal run
 logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
@@ -99,13 +99,14 @@ class AndroidBT:
     def receive(self):
         try:
             msg = self.client_sock.recv(1024)
-            if msg is not None or msg.strip() != "":
+            if msg is not None:
                 logging.debug("recv android msg: {}".format(msg.strip().decode("utf-8")))
                 return msg.strip().decode("utf-8")
         except KeyboardInterrupt:
             pass
         except:
-            logging.error("error receiving from android")
+            pass
+            # logging.error("error receiving from android")
 
 # SETUP - stm connection class
 class STMSerial:
@@ -164,6 +165,7 @@ class Brain:
         self.proc_sendAndroid = None                        # process - sending messages to Android
         self.proc_recvAndroid = None                        # process - receiving messages from Android 
         self.proc_robotRun = None                           # process - robot run commands
+        self.commandq = self.manager.Queue()                # queue - commands
 
         # only for task 1
         if obstacleCourse:
@@ -171,7 +173,6 @@ class Brain:
             self.send_pic = self.manager.Event()                # event - image sent
             self.obs_queue = self.manager.Queue()               # queue - obs list
             self.state_queue = self.manager.Queue()             # queue - states list
-            self.commandq = self.manager.Queue()                # queue - commands
             self.inserting = self.manager.Event()               # event - command insertion
             self.duplicating = self.manager.Event()             # event - state duplication
         else:
@@ -203,6 +204,7 @@ class Brain:
                 self.STM.disconnect()
                 logging.error("some connection not properly established. aborted")
                 self.stop()  # exit program if connection not ready
+                return
             
             # start processes
             self.proc_sendAndroid = Process(target=self.sendAndroid)
@@ -221,7 +223,6 @@ class Brain:
 
             # initial messages
             self.android_sendq.put("ROBOT READY")   # enable choosing of obstacles
-            # self.STM.warmup()
             self.reconnect_android()                # waiting and test for disconnection
 
         except KeyboardInterrupt:
@@ -328,7 +329,7 @@ class Brain:
                 if not self.pingAPI():
                     logging.error("API down cannot start path")
                     self.android_sendq.put("API down, cannot start")
-                if self.obs_queue.empty() and obstacleCourse:
+                if obstacleCourse and self.obs_queue.empty():
                     logging.error("no obstacles cannot start path")
                     self.android_sendq.put("No obstacles")
                 else:
@@ -412,7 +413,7 @@ class Brain:
                 ## TURN movements
                 elif command.startswith("FL"):
                     if prevFL:
-                        self.stm_sendq.put("fa085")
+                        self.stm_sendq.put("fa090")
                         prevFL = False
                     else:
                         prevFL = True
@@ -425,8 +426,7 @@ class Brain:
                         self.movement_lock.release()
                 elif command.startswith("FR"):
                     if prevFR:
-                        # self.stm_sendq.put("fd090")
-                        self.stm_sendq.put("fd090") # calibrated
+                        self.stm_sendq.put("fd090")
                         prevFR = False
                     else:
                         prevFR = True
@@ -439,7 +439,7 @@ class Brain:
                         self.movement_lock.release()
                 elif command.startswith("BL"):
                     if prevBL:
-                        self.stm_sendq.put("ba085")
+                        self.stm_sendq.put("ba090")
                         prevBL = False
                     else:
                         prevBL = True
@@ -472,8 +472,7 @@ class Brain:
                     logging.info("path ended")
                     sleep(5)
                     self.android_sendq.put("ROBOT END")
-                    if obstacleCourse:
-                        self.rpi_queue.put("STITCH")
+                    self.rpi_queue.put("STITCH")
                     while True:
                         if self.android_sendq.empty() and self.stm_sendq.empty() and self.rpi_queue.empty():
                             sleep(5)
@@ -483,13 +482,15 @@ class Brain:
 
                 # task 2
                 elif command == "T2START":
-                    self.STM.send("wx150")
-                    if self.movement_lock.locked():
-                        self.stm_sendq.put("T2SHORT")
+                    self.stm_sendq.put("wx150")             # ultrasonic - interrupt @ 40, stop at 30
+                    if not self.movement_lock.acquire(blocking=False):
+                        self.commandq.put("T2SHORT")
                 elif command == "T2SHORT":
                     self.rpi_queue.put("T2SHORTPIC")
                     self.arrow_recog.wait()
                     self.arrow_recog.clear()
+                elif command == "T2TOLONG":
+                    self.stm_sendq.put("wx150")             # ultrasonic - interrupt @ 40, stop at 30
                 elif command == "T2LONG":
                     self.rpi_queue.put("T2LONGPIC")
                     self.arrow_recog.wait()
@@ -497,9 +498,22 @@ class Brain:
                 elif command == "T2GOBACK":
                     pass
                     # commands to go back to carpark
-                elif command.startswith("T2"):
-                    self.STM.send(command[3:])   
+                # first obstacle - left
+                elif command == "L1":
+                    self.stm_sendq.put("fa050")
+                elif command == "L2":
+                    self.stm_sendq.put("fd100")
+                elif command == "L3":
+                    self.stm_sendq.put("fa050")
+                # first obstacle - right
+                elif command == "R1":
+                    self.stm_sendq.put("fd050")
+                elif command == "R2":
+                    self.stm_sendq.put("fa100")
+                elif command == "R3":
+                    self.stm_sendq.put("fd050")
                 else:
+                # second obstacle 
                     logging.error("command not recognised: {}".format(command))
             except KeyboardInterrupt:
                 break
@@ -621,15 +635,18 @@ class Brain:
                         # parse id response
                         data = response.json()
                         if data["id"] != "NIL":
-                            if data["id"] == 38: #right
-                                self.commandq.put()    # all the commands for turning right
-                            elif data["id"] == 39: # left
-                                self.commandq.put()    # all the commands for turning left
-                            self.commandq.put("T2LONG")
+                            if data["id"] == "38": # right
+                                self.commandq.put("R1")
+                                self.commandq.put("R2")
+                                self.commandq.put("R3")
+                            elif data["id"] == "39": # left
+                                self.commandq.put("L1")
+                                self.commandq.put("L2")
+                                self.commandq.put("L3")
+                            self.commandq.put("T2TOLONG")
                         else:
                             logging.info("API cannot detect image")
 
-                        
                         # start moving again
                         self.arrow_recog.set()
                         self.movement_lock.release()
