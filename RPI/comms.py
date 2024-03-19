@@ -1,7 +1,7 @@
 ### IMPORTS ###
 
 # general
-from time import sleep
+from time import sleep, time
 import os, subprocess, logging, sys
 # connections related
 import bluetooth, socket, serial, requests
@@ -67,8 +67,10 @@ class AndroidBT:
             return True
         except:
             logging.error("bluetooth connection unsuccessful")
-            self.server_sock.close()
-            self.client_sock.close()
+            if self.server_sock is not None:
+                self.server_sock.close()
+            if self.client_sock is not None:
+                self.client_sock.close()
             self.server_sock = None
             self.client_sock = None
             return False
@@ -100,6 +102,8 @@ class AndroidBT:
             if msg is not None or msg.strip() != "":
                 logging.debug("recv android msg: {}".format(msg.strip().decode("utf-8")))
                 return msg.strip().decode("utf-8")
+        except KeyboardInterrupt:
+            pass
         except:
             logging.error("error receiving from android")
 
@@ -189,7 +193,8 @@ class Brain:
             # establish connections
             conn1, conn2, conn3 = False, False, False
             conn1 = self.android.connect()
-            self.android_sendq.put("CONNECTED TO RPI")
+            if conn1:
+                self.android_sendq.put("CONNECTED TO RPI")
             conn2 = self.STM.connect()
             conn3 = self.pingAPI()
             
@@ -220,6 +225,7 @@ class Brain:
             self.reconnect_android()                # waiting and test for disconnection
 
         except KeyboardInterrupt:
+            print("\r>>> MANUAL KILL PROGRAM <<<")
             self.stop()
     
     # FUNCTION - stop this code
@@ -228,11 +234,12 @@ class Brain:
         try:
             self.proc_sendAndroid.kill()
             self.proc_recvAndroid.kill()
+            self.proc_sendSTM.kill()
+            self.proc_recvSTM.kill()
+            self.proc_rpi.kill()
         except:
             pass
         self.STM.disconnect()
-        
-        sys.exit(0)
         logging.info("program exit")
 
     # FUNCTION - monitor for android connection dropped
@@ -347,21 +354,24 @@ class Brain:
     # FUNCTION - receive ack from STM (child process)
     def recvSTM(self):
         while True:
-            msg = self.STM.receive()
-            if msg is None:
-                continue
-            logging.debug("msg: {}".format(msg))
-            if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
-                try:
-                    currentPos = self.state_queue.get()
-                    if currentPos != "KEEP":
-                        self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                    # logging.debug(str(currentPos))
-                    sleep(2)
-                    self.movement_lock.release()
-                except Exception as e:
-                    print(e)
-                    logging.error("tried to release a released lock")
+            try:
+                msg = self.STM.receive()
+                if msg is None:
+                    continue
+                logging.debug("msg: {}".format(msg))
+                if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
+                    try:
+                        currentPos = self.state_queue.get()
+                        if currentPos != "KEEP":
+                            self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                        # logging.debug(str(currentPos))
+                        sleep(2)
+                        self.movement_lock.release()
+                    except Exception as e:
+                        print(e)
+                        logging.error("tried to release a released lock")
+            except KeyboardInterrupt:
+                break
 
     def robotRun(self):
         prevFL = False
@@ -380,8 +390,8 @@ class Brain:
                 self.movement_lock.acquire()
                 
                 # DEBUG
-                # logging.debug("note issue and move to by right location")
-                # sleep(3)
+                logging.debug("note issue and move to by right location")
+                sleep(2)
                 # command reading
                 ## FW and BW movements
                 logging.debug(command)
@@ -402,11 +412,11 @@ class Brain:
                 ## TURN movements
                 elif command.startswith("FL"):
                     if prevFL:
-                        self.stm_sendq.put("fa090")
+                        self.stm_sendq.put("fa085")
                         prevFL = False
                     else:
                         prevFL = True
-                        self.insertCommand(["wx005","FL00","wx003"])
+                        self.insertCommand(["wx008","FL00","wx005"])
                         self.inserting.wait()
                         self.inserting.clear()
                         self.dupStates(1,2)
@@ -415,11 +425,12 @@ class Brain:
                         self.movement_lock.release()
                 elif command.startswith("FR"):
                     if prevFR:
-                        self.stm_sendq.put("fd090")
+                        # self.stm_sendq.put("fd090")
+                        self.stm_sendq.put("fd090") # calibrated
                         prevFR = False
                     else:
                         prevFR = True
-                        self.insertCommand(["wx006","FR00","sx006"])
+                        self.insertCommand(["wx008","FR00","sx002"])
                         self.inserting.wait()
                         self.inserting.clear()
                         self.dupStates(1,2)
@@ -428,11 +439,11 @@ class Brain:
                         self.movement_lock.release()
                 elif command.startswith("BL"):
                     if prevBL:
-                        self.stm_sendq.put("ba090")
+                        self.stm_sendq.put("ba085")
                         prevBL = False
                     else:
                         prevBL = True
-                        self.insertCommand(["sx003","BL00"])
+                        self.insertCommand(["sx005","BL00"])
                         self.inserting.wait()
                         self.inserting.clear()
                         self.dupStates(1,1)
@@ -445,7 +456,7 @@ class Brain:
                         prevBR = False
                     else:
                         prevBR = True
-                        self.insertCommand(["sx004","BR00","wx002"])
+                        self.insertCommand(["sx006","BR00","sx002"])
                         self.inserting.wait()
                         self.inserting.clear()
                         self.dupStates(1,2)
@@ -461,14 +472,14 @@ class Brain:
                     logging.info("path ended")
                     sleep(5)
                     self.android_sendq.put("ROBOT END")
-                    
-                    url = f"http://{api_ip}:5000/stitch-image"
-                    response = requests.get(url)
-
+                    if obstacleCourse:
+                        self.rpi_queue.put("STITCH")
                     while True:
                         if self.android_sendq.empty() and self.stm_sendq.empty() and self.rpi_queue.empty():
                             sleep(5)
                             self.stop()
+                        else:
+                            continue
 
                 # task 2
                 elif command == "T2START":
@@ -495,6 +506,8 @@ class Brain:
 
     # FUNCTION - ask the RPI to do things (child process)
     def rpiTasks(self): 
+        timeStart = None
+        timeEnd = None
         while True:
             # get task from queue
             try:
@@ -512,10 +525,10 @@ class Brain:
                     logging.debug("taking picture")
                     
                     # DEBUG - skip taking pictures
-                    logging.debug("SKIPPING PICTURES")
+                    # logging.debug("SKIPPING PICTURES")
 
                     obsNo = int(task[2:])
-                    '''
+                    
                     # capturing image
                     with picamera.PiCamera() as camera:
                         camera.resolution = (640,640)
@@ -545,8 +558,8 @@ class Brain:
                     else:
                         logging.error("API cannot detect image")
                         self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
-                    '''
-                    self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
+                    
+                    # self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
                     # start moving again
                     self.send_pic.wait()
                     self.send_pic.clear()
@@ -554,6 +567,7 @@ class Brain:
                 # case B - get path
                 elif task.startswith("PATH"):
                     logging.debug("getting path")
+                    timeStart = time()
                     # calling API
                     obs = []
                     while not self.obs_queue.empty():
@@ -576,7 +590,12 @@ class Brain:
                     for state in states[1:]:
                         self.state_queue.put(state)
                     self.path_obtained.set()
-                
+                elif task.startswith("STITCH"):
+                    logging.debug("stitching image")
+                    timeEnd = time()
+                    logging.info("time used for run: {}".format(int(timeEnd-timeStart)))
+                    url = f"http://{api_ip}:5000/stitch-image"
+                    requests.get(url)
                 elif task.startswith("T2"):
                     if task == "T2SHORTPIC":
                         # capturing image
@@ -685,4 +704,7 @@ class Brain:
 if __name__ == "__main__":
     logging.basicConfig(level=logLevel,format="[%(levelname)s] %(funcName)s - %(message)s")
     controller = Brain()
-    controller.run()
+    try:
+        controller.run()
+    except KeyboardInterrupt:
+        pass
