@@ -360,16 +360,25 @@ class Brain:
                 if msg is None:
                     continue
                 logging.debug("msg: {}".format(msg))
+                # NORMAL ACK
                 if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
                     try:
-                        currentPos = self.state_queue.get()
-                        if currentPos != "KEEP":
-                            self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                        # logging.debug(str(currentPos))
+                        if obstacleCourse:
+                            currentPos = self.state_queue.get()
+                            if currentPos != "KEEP":
+                                self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
+                            # logging.debug(str(currentPos))
                         sleep(2)
                         self.movement_lock.release()
-                    except Exception as e:
-                        print(e)
+                    except RunTimeError:
+                        logging.error("tried to release a released lock")
+                # BMP when using US
+                elif msg.startswith("B") or msg.startswith("M") or msg.startswith("P"):
+                    logging.debug("BMP from ultrasonic sensor")
+                    try:
+                        sleep(2)
+                        self.movement_lock.release()
+                    except RuntimeError:
                         logging.error("tried to release a released lock")
             except KeyboardInterrupt:
                 break
@@ -412,7 +421,7 @@ class Brain:
 
                 ## TURN movements
                 elif command.startswith("FL"):
-                    if prevFL:
+                    if prevFL or not obstacleCourse:
                         self.stm_sendq.put("fa090")
                         prevFL = False
                     else:
@@ -425,7 +434,7 @@ class Brain:
                         self.duplicating.clear()
                         self.movement_lock.release()
                 elif command.startswith("FR"):
-                    if prevFR:
+                    if prevFR or not obstacleCourse:
                         self.stm_sendq.put("fd090")
                         prevFR = False
                     else:
@@ -438,7 +447,7 @@ class Brain:
                         self.duplicating.clear()
                         self.movement_lock.release()
                 elif command.startswith("BL"):
-                    if prevBL:
+                    if prevBL or not obstacleCourse:
                         self.stm_sendq.put("ba090")
                         prevBL = False
                     else:
@@ -451,7 +460,7 @@ class Brain:
                         self.duplicating.clear()
                         self.movement_lock.release()
                 elif command.startswith("BR"):
-                    if prevBR:
+                    if prevBR or not obstacleCourse:
                         self.stm_sendq.put("bd090")
                         prevBR = False
                     else:
@@ -482,15 +491,17 @@ class Brain:
 
                 # task 2
                 elif command == "T2START":
-                    self.stm_sendq.put("wx150")             # ultrasonic - interrupt @ 40, stop at 30
-                    if not self.movement_lock.acquire(blocking=False):
-                        self.commandq.put("T2SHORT")
+                    self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
+                    self.commandq.put("T2SHORT")
                 elif command == "T2SHORT":
                     self.rpi_queue.put("T2SHORTPIC")
                     self.arrow_recog.wait()
                     self.arrow_recog.clear()
                 elif command == "T2TOLONG":
-                    self.stm_sendq.put("wx150")             # ultrasonic - interrupt @ 40, stop at 30
+                    self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
+                    if self.movement_lock.acquire():
+                        self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
+                        self.commandq.put("T2LONG")
                 elif command == "T2LONG":
                     self.rpi_queue.put("T2LONGPIC")
                     self.arrow_recog.wait()
@@ -504,16 +515,36 @@ class Brain:
                 elif command == "L2":
                     self.stm_sendq.put("fd100")
                 elif command == "L3":
-                    self.stm_sendq.put("fa050")
+                    self.stm_sendq.put("fa055")
                 # first obstacle - right
                 elif command == "R1":
                     self.stm_sendq.put("fd050")
                 elif command == "R2":
                     self.stm_sendq.put("fa100")
                 elif command == "R3":
-                    self.stm_sendq.put("fd050")
+                    self.stm_sendq.put("fd055")
+                # second obstacle - left
+                # second obstacle - right
+                elif command == "RR1":
+                    self.stm_sendq.put("fd090")
+                elif command == "RR2":
+                    self.stm_sendq.put("wi150")
+                elif command == "RR3":
+                    self.stm_sendq.put("fa090")
+                elif command == "RR4":
+                    self.stm_sendq.put("sx025")
+                elif command == "RR5":
+                    self.stm_sendq.put("fa090")
+                elif command == "RR6":
+                    self.stm_sendq.put("fd000")             # to straighten before straight
+                elif command == "RR7":
+                    self.stm_sendq.put("wx030")
+                elif command == "RR8":
+                    self.stm_sendq.put("wi150")
+                elif command == "RR9":
+                    self.stm_sendq.put("fa090")
+                # go back carpark
                 else:
-                # second obstacle 
                     logging.error("command not recognised: {}".format(command))
             except KeyboardInterrupt:
                 break
