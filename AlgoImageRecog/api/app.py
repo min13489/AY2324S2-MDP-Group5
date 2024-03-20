@@ -125,7 +125,7 @@ def testImage():
                     detections = sv.Detections.from_ultralytics(results[0])[0]     # for drawing of box - only consider first one
                     image = cv2.imread("../images/{}.jpg".format(recvDateTime))    # actual image
                     bounding_box_annotator = sv.BoundingBoxAnnotator()
-                    label_annotator = sv.LabelAnnotator(text_position=sv.geometry.core.Position.TOP_LEFT_CUSTOM)
+                    label_annotator = sv.LabelAnnotator(text_position=sv.geometry.core.Position.TOP_LEFT)
                     annotated_image = bounding_box_annotator.annotate(scene=image, detections=detections)                               # draw box
                     annotated_image = label_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)             # labels on the box
                     cv2.imwrite("../images/boxed/OBS{}_id{}.jpg".format(data["obs"],id if id is not None else 'x'), annotated_image)    # save the annotated image

@@ -14,7 +14,7 @@ import base64, picamera
 
 ### SWITCHES ###
 
-obstacleCourse = 0           # 1 - obstacle course 0 - fastest car
+obstacleCourse = 1           # 1 - obstacle course 0 - fastest car
 # logLevel = logging.INFO      # logging.INFO - normal run
 logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
@@ -359,9 +359,11 @@ class Brain:
                 msg = self.STM.receive()
                 if msg is None:
                     continue
+                # if msg != "stp":
                 logging.debug("msg: {}".format(msg))
                 # NORMAL ACK
-                if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
+                # if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
+                if msg.startswith("ACK"):
                     try:
                         if obstacleCourse:
                             currentPos = self.state_queue.get()
@@ -373,7 +375,7 @@ class Brain:
                     except RunTimeError:
                         logging.error("tried to release a released lock")
                 # BMP when using US
-                elif msg.startswith("B") or msg.startswith("M") or msg.startswith("P"):
+                elif msg.startswith("BMP") and not obstacleCourse:
                     logging.debug("BMP from ultrasonic sensor")
                     try:
                         sleep(2)
@@ -400,8 +402,8 @@ class Brain:
                 self.movement_lock.acquire()
                 
                 # DEBUG
-                logging.debug("note issue and move to by right location")
-                sleep(2)
+                # logging.debug("note issue and move to by right location")
+                # sleep(2)
                 # command reading
                 ## FW and BW movements
                 logging.debug(command)
@@ -414,65 +416,68 @@ class Brain:
                     self.stm_sendq.put(command)
                 elif command.startswith("BW"):
                     distance = int(command[2:])
-                    send_str = "sx{:03d}".format(distance*10)
+                    send_str = "sx{:03d}".format(distance*10+2)
                     self.stm_sendq.put(send_str)
                 elif command.startswith("sx"):
                     self.stm_sendq.put(command)
 
                 ## TURN movements
                 elif command.startswith("FL"):
-                    if prevFL or not obstacleCourse:
-                        self.stm_sendq.put("fa090")
-                        prevFL = False
-                    else:
-                        prevFL = True
-                        self.insertCommand(["wx008","FL00","wx005"])
-                        self.inserting.wait()
-                        self.inserting.clear()
-                        self.dupStates(1,2)
-                        self.duplicating.wait()
-                        self.duplicating.clear()
-                        self.movement_lock.release()
+                    # if prevFL or not obstacleCourse:
+                    #     self.stm_sendq.put("fa090")
+                    #     prevFL = False
+                    # else:
+                    #     prevFL = True
+                    #     self.insertCommand(["wx008","FL00","wx005"])
+                    #     self.inserting.wait()
+                    #     self.inserting.clear()
+                    #     self.dupStates(1,2)
+                    #     self.duplicating.wait()
+                    #     self.duplicating.clear()
+                    #     self.movement_lock.release()
+                    self.stm_sendq.put("fa090")
                 elif command.startswith("FR"):
-                    if prevFR or not obstacleCourse:
-                        self.stm_sendq.put("fd090")
-                        prevFR = False
-                    else:
-                        prevFR = True
-                        self.insertCommand(["wx008","FR00","sx002"])
-                        self.inserting.wait()
-                        self.inserting.clear()
-                        self.dupStates(1,2)
-                        self.duplicating.wait()
-                        self.duplicating.clear()
-                        self.movement_lock.release()
+                    # if prevFR or not obstacleCourse:
+                    #     self.stm_sendq.put("fd090")
+                    #     prevFR = False
+                    # else:
+                    #     prevFR = True
+                    #     self.insertCommand(["wx008","FR00","sx002"])
+                    #     self.inserting.wait()
+                    #     self.inserting.clear()
+                    #     self.dupStates(1,2)
+                    #     self.duplicating.wait()
+                    #     self.duplicating.clear()
+                    #     self.movement_lock.release()
+                    self.stm_sendq.put("fd090")
                 elif command.startswith("BL"):
-                    if prevBL or not obstacleCourse:
-                        self.stm_sendq.put("ba090")
-                        prevBL = False
-                    else:
-                        prevBL = True
-                        self.insertCommand(["sx005","BL00"])
-                        self.inserting.wait()
-                        self.inserting.clear()
-                        self.dupStates(1,1)
-                        self.duplicating.wait()
-                        self.duplicating.clear()
-                        self.movement_lock.release()
+                    # if prevBL or not obstacleCourse:
+                    #     self.stm_sendq.put("ba090")
+                    #     prevBL = False
+                    # else:
+                    #     prevBL = True
+                    #     self.insertCommand(["sx005","BL00"])
+                    #     self.inserting.wait()
+                    #     self.inserting.clear()
+                    #     self.dupStates(1,1)
+                    #     self.duplicating.wait()
+                    #     self.duplicating.clear()
+                    #     self.movement_lock.release()
+                    self.stm_sendq.put("ba090")
                 elif command.startswith("BR"):
-                    if prevBR or not obstacleCourse:
-                        self.stm_sendq.put("bd090")
-                        prevBR = False
-                    else:
-                        prevBR = True
-                        self.insertCommand(["sx006","BR00","sx002"])
-                        self.inserting.wait()
-                        self.inserting.clear()
-                        self.dupStates(1,2)
-                        self.duplicating.wait()
-                        self.duplicating.clear()
-                        self.movement_lock.release()
-
+                    # if prevBR or not obstacleCourse:
+                    #     self.stm_sendq.put("bd090")
+                    #     prevBR = False
+                    # else:
+                    #     prevBR = True
+                    #     self.insertCommand(["sx006","BR00","sx002"])
+                    #     self.inserting.wait()
+                    #     self.inserting.clear()
+                    #     self.dupStates(1,2)
+                    #     self.duplicating.wait()
+                    #     self.duplicating.clear()
+                    #     self.movement_lock.release()
+                    self.stm_sendq.put("bd090")
                 ## Others
                 elif command.startswith("TP"):
                     self.rpi_queue.put(command)
@@ -551,6 +556,7 @@ class Brain:
 
     # FUNCTION - ask the RPI to do things (child process)
     def rpiTasks(self): 
+        # TODO: add in correction mechanism if unable to detect image - correct to left
         timeStart = None
         timeEnd = None
         while True:
