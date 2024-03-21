@@ -19,6 +19,7 @@ from parallel import runCommands
 from multiprocessing import Process
 # general
 import os
+from math import ceil
 
 
 ### CODES ###
@@ -121,11 +122,11 @@ def testImage():
                     id = firstClass[2:]     # remove 'id' prefix
 
                     # draw the bounding box
-                    labels = ["{} Image id={}".format(imageNameMap[id], id)]       # label with name and id
+                    labels = ["{}, id={}".format(imageNameMap[id], id)]            # label with name and id
                     detections = sv.Detections.from_ultralytics(results[0])[0]     # for drawing of box - only consider first one
                     image = cv2.imread("../images/{}.jpg".format(recvDateTime))    # actual image
                     bounding_box_annotator = sv.BoundingBoxAnnotator()
-                    label_annotator = sv.LabelAnnotator(text_position=sv.geometry.core.Position.TOP_LEFT)
+                    label_annotator = sv.LabelAnnotator(text_position=sv.geometry.core.Position.TOP_LEFT_CUSTOM)
                     annotated_image = bounding_box_annotator.annotate(scene=image, detections=detections)                               # draw box
                     annotated_image = label_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)             # labels on the box
                     cv2.imwrite("../images/boxed/OBS{}_id{}.jpg".format(data["obs"],id if id is not None else 'x'), annotated_image)    # save the annotated image
@@ -180,18 +181,31 @@ def stitchImage():
 
         # stitching
         images = [Image.open(x) for x in img_paths]
-        width, height = zip(*(i.size for i in images))
-        total_width = sum(width)
-        max_height = max(height)
+        perRow = ceil(len(images) / 2)
+        # width, height = zip(*(i.size for i in images))  # all are 640 x 640
+        total_width = perRow * 640      # instead of sum(width)
+        max_height = 2 * 640            # instead of max(height)
 
         stitched_image = Image.new('RGB', (total_width, max_height))
         x_offset = 0
+        y_offset = 0
 
+        rowCount = 0
         for im in images:
-            stitched_image.paste(im, (x_offset,0))
-            x_offset += im.size[0]
+            if rowCount == perRow:
+                x_offset = 0
+                y_offset = 640
+                rowCount = 0
+            stitched_image.paste(im, (x_offset,y_offset))
+            x_offset += 640        # instead of im.size[0] because fixed
+            rowCount += 1
         
-        stitched_path = "..\images\\boxed\stitched.jpg"
+        while x_offset != total_width:
+            placeholder = Image.open("../images/boxed/placeholder.jpg")
+            stitched_image.paste(placeholder, (x_offset, y_offset))
+            x_offset += 640
+        
+        stitched_path = "../images/boxed/stitched.jpg"
         stitched_image.save(stitched_path)
         return "stitched\n"
 

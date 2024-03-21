@@ -557,7 +557,7 @@ class Brain:
                         
                         # capturing image
                         with picamera.PiCamera() as camera:
-                            camera.resolution = (640,640)
+                            camera.resolution = (640,640) 
                             camera.start_preview()
                             sleep(2)
                             camera.capture(f"OBS{obsNo}.jpg")
