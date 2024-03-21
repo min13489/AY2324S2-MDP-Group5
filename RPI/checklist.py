@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import bluetooth
+#import bluetooth
 import serial
 
 import picamera
@@ -16,6 +16,8 @@ taskA2 = False
 taskA3 = True
 taskA4 = False
 taskA5 = False
+task1 = False
+task2 = False
 
 # establish bluetooth connection with android
 '''
@@ -48,9 +50,9 @@ if len(ttyUSB) == 0:
     print("Serial not connected")
     sys.exit(0)
 
-serial_link = serial.Serial("/dev/{}".format(ttyUSB[0]), 115200)
+serial_link = serial.Serial("/dev/{}".format(ttyUSB[0]), baudrate=115200, timeout=0.5)
 print("Serial connected")
-#serial_link.write("wx021".encode(encoding="ascii"))
+#serial_link.write("wx000".encode(encoding="ascii"))
 #print("wx021 sent")
 #sleep(5)
 # send commands
@@ -71,17 +73,17 @@ if taskA1:
         
 elif taskA2:
     print("Running task A2")
-    api_ip = "192.168.5.29"
+    api_ip = "192.168.5.22"
     obsNo = 1
     with picamera.PiCamera() as camera:
         camera.resolution = (640,640)
         camera.start_preview()
         sleep(2)
-        camera.capture(f"OBS{obsNo}.jpg")
+        camera.capture("./OBS_distance.jpg")
         camera.close()
 
     url = "http://{}:5000/test-image".format(api_ip)
-    with open(f"OBS{obsNo}.jpg", 'rb') as f:
+    with open("./OBS_distance.jpg", 'rb') as f:
         image = f.read()
     payload = {
         "image":base64.b64encode(image).decode('utf-8'),
@@ -102,8 +104,20 @@ elif taskA3:
     if len(sys.argv) == 2:
         serial_link.write("{}".format(sys.argv[1].strip()).encode(encoding="ascii"))
     else:
-        command = input("Enter the command [5 char] => ")
-        serial_link.write("{}".format(command.strip()).encode(encoding="ascii"))
+        while True:
+            try:
+                command = input("Enter the command => ")
+                if command == "exit":
+                    break
+                serial_link.write("{}".format(command.strip()).encode(encoding="ascii"))
+            except KeyboardInterrupt:
+                break
+    #while True:
+    #    msg = serial_link.read(3)
+    #    if msg is not None or msg.strip() != "":
+    #        print(msg.strip().decode(encoding="ascii"))
+    #    else:
+    #        print("err")
 elif taskA4:
     print("Running task A4")
     for i in range(3):
@@ -114,14 +128,15 @@ elif taskA4:
 elif taskA5:
     print("Running task A5")
     imageNotFound = True
-    while imageNotFound:
+    #while imageNotFound:
         # back > turn right > forward (opt) > turn left > back (opt) > turn left > forward (opt)
-        commands = ["sx030","wd090","wx010","wa090","sx030","wa090","wx010"]
-        for command in commands:
-            serial_link.write(command.encode(encoding="ascii"))
-            sleep(5) # does the robot listen for command while moving?
+    commands = ["wx255","fa060","fd120","fa060","wx255","fd076"]
+    for command in commands:
+        serial_link.write(command.encode(encoding="ascii"))
+        sleep(5) # does the robot listen for command while moving?
         
         # take pic
+        '''
         api_ip = "192.168.5.29"
         obsNo = 1
         with picamera.PiCamera() as camera:
@@ -144,15 +159,65 @@ elif taskA5:
         response = requests.post(url, headers=headers, json=payload)
         try:
             data = response.json()
-            print(data)
+            print(data["id"])
             
-            if data["id"] != 99:
+            if data["id"] != "99":
                 imageNotFound = False # aka found, stop the loop
         except:
             print("No response")
+        '''
+elif task1:
+    print("Running task1")
+    imageNotFound = True
+    #while imageNotFound:
+        # back > turn right > forward (opt) > turn left > back (opt) > turn left > forward (opt)
+    commands = ["wx070","sx015","fd070","wx090","sx025","fa065","wx010","sx020","fa065","wx010","bd067","wx050","ba065"]
+    for command in commands:
+        print(command)
+        serial_link.write(command.encode(encoding="ascii"))
+        sleep(5) # does the robot listen for command while moving?
+
+        # take pic
+        
+        api_ip = "192.168.5.29"
+        obsNo = 1
+        with picamera.PiCamera() as camera:
+            camera.resolution = (640,640)
+            camera.start_preview()
+            sleep(2)
+            camera.capture(f"OBS{obsNo}.jpg")
+            camera.close()
+
+        url = "http://{}:5000/test-image".format(api_ip)
+
+elif task2:
+    print("Running task2")
+    imageNotFound = True
+    #while imageNotFound:
+        # back > turn right > forward (opt) > turn left > back (opt) > turn left > forward (opt)
+   # commands = ["wx255","fa050","fd100","fa050","wx255"] 
+    commands = ["wz100","fa050", "fd100","fa059","wz150", "sz150", "fd088", "wi150", "fa190","fd000","wx020","wi150", "fa090","wz255"]
+    for command in commands:
+        print(command)
+        serial_link.write(command.encode(encoding="ascii"))
+        sleep(3) # does the robot listen for command while moving?
+
+        # take pic
+     
+        api_ip = "192.168.5.29"
+        obsNo = 1
+        with picamera.PiCamera() as camera:
+            camera.resolution = (640,640)
+            camera.start_preview()
+            sleep(2)
+            camera.capture(f"OBS{obsNo}.jpg")
+            camera.close()
+
+        url = "http://{}:5000/test-image".format(api_ip)
 
 print("Disconnected.")
 
 #client_sock.close()
 #server_sock.close()
 print("All done.")
+

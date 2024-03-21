@@ -29,12 +29,15 @@ api_ip = "192.168.5.29"         # min's computer IP
 
 # SETUP - android connection class
 class AndroidBT:
+    # Initialisation
     def __init__(self):
         self.client_sock = None
         self.server_sock = None
-    
+
+    # Connect to Android device
     def connect(self):
         logging.debug("establishing bluetooth connection")
+
         try:
             # make discoverable
             os.system("sudo hciconfig hci0 piscan")
@@ -55,26 +58,30 @@ class AndroidBT:
             self.server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
             self.server_sock.bind(("",bluetooth.PORT_ANY))
             self.server_sock.listen(1)
-
-            # important info
             port = self.server_sock.getsockname()[1]
-            uuid = "00001101-0000-1000-8000-00805F9B34FB"
             logging.info("waiting for bluetooth connection on RFCOMM channel {}".format(port))
+
+            # important for app connection
+            uuid = "00001101-0000-1000-8000-00805F9B34FB"
 
             # receiving incoming connection
             self.client_sock, client_info = self.server_sock.accept()
             logging.info("accepted conenction from {}".format(client_info))
-            return True
+
+            return True # connection established
         except:
             logging.error("bluetooth connection unsuccessful")
+
+            # cleanup
             if self.server_sock is not None:
                 self.server_sock.close()
             if self.client_sock is not None:
                 self.client_sock.close()
             self.server_sock = None
             self.client_sock = None
-            return False
+            return False # connection not established
     
+    # Disconnect from Android device
     def disconnect(self):
         if self.server_sock is None:
             return
@@ -89,42 +96,49 @@ class AndroidBT:
         except:
             logging.error("bluetooth disconnection unsuccessful")
 
+    # Send message to Android device
     def send(self, msg):
         try:
             self.client_sock.send(msg.encode("utf-8"))
-            logging.debug("send android msg: {}".format(msg))
+            logging.debug("RPI ---> ANDR: {}".format(msg))
         except:
-            logging.error("error sending to android: msg - {}".format(msg))
+            logging.error("RPI -/-> ANDR: {}".format(msg))
 
+    # Receive message from Android device
     def receive(self):
         try:
             msg = self.client_sock.recv(1024)
             if msg is not None:
-                logging.debug("recv android msg: {}".format(msg.strip().decode("utf-8")))
+                logging.debug("ANDR ---> RPI: {}".format(msg.strip().decode("utf-8")))
                 return msg.strip().decode("utf-8")
         except KeyboardInterrupt:
             pass
         except:
-            pass
-            # logging.error("error receiving from android")
+            logging.error("ANDR -/-> RPI")
 
 # SETUP - stm connection class
 class STMSerial:
+    # Initialisation
     def __init__(self):
         self.serial_link = None
 
+    # Connect to STM board
     def connect(self):
+        logging.debug("establishing STM connection")
+
         # get the ttyUSB in use
         ttyUSB = [filename for filename in os.listdir("/dev") if filename.startswith("ttyUSB")]
         if len(ttyUSB) == 0:
             logging.error("serial not connected")
-            return False
+            return False # connection not established
         
         # connect
         self.serial_link = serial.Serial("/dev/{}".format(ttyUSB[0]), 115200)
         logging.info("serial connected")
-        return True
 
+        return True # connection established
+
+    # Disconnect from STM board
     def disconnect(self):
         if self.serial_link is None:
             return
@@ -132,63 +146,66 @@ class STMSerial:
         self.serial_link = None
         logging.info("serial disconnected")
 
+    # Send message to STM board
     def send(self, msg):
         self.serial_link.write(msg.strip().encode(encoding="ascii"))
-        logging.debug("stm msg sent: {}".format(msg))
+        logging.debug("RPI ---> STM: {}".format(msg))
 
+    # Receive message from STM board
     def receive(self):
         try:
             msg = self.serial_link.read(3)
             if msg is not None:
-                # logging.debug("stm msg recv: {}".format(msg.strip().decode(encoding="ascii")))
+                logging.debug("STM ---> RPI: {}".format(msg.strip().decode(encoding="ascii")))
                 return msg.strip().decode(encoding="ascii")
         except:
-            # logging.error("error receiving from stm")
+            logging.error("STM -/-> RPI")
             pass
         
 # SETUP - main controller class
 class Brain:
-    # INIT - set up connection objects and multiprocessing pre-reqs
+    # Set up connection and multiprocessing
     def __init__(self):
-        # setup for both tasks
-        self.STM = STMSerial()                      # object - STM conn
-        self.manager = Manager()                    # manager - multiprocessing
-        self.movement_lock = self.manager.Lock()    # lock - per command
-        self.stm_sendq = self.manager.Queue()       # queue - STM commands
-        self.rpi_queue = self.manager.Queue()       # queue - RPI tasks
-        self.proc_sendSTM = None                    # process - sending messages from STM
-        self.proc_recvSTM = None                    # process - receiving messages from STM
-        self.proc_rpi = None                        # process - do RPI things
-        self.android = AndroidBT()                          # object - Android conn
-        self.android_dropped = self.manager.Event()         # event - Android disconnected
-        self.android_sendq = self.manager.Queue()           # queue - Android display messages
-        self.proc_sendAndroid = None                        # process - sending messages to Android
-        self.proc_recvAndroid = None                        # process - receiving messages from Android 
-        self.proc_robotRun = None                           # process - robot run commands
-        self.commandq = self.manager.Queue()                # queue - commands
+        # general setup
+        self.android = AndroidBT()                      # object - ANDR connection
+        self.STM = STMSerial()                          # object - STM connection
+        self.manager = Manager()                        # manager - multiprocessing
+        self.android_sendq = self.manager.Queue()       # queue - things to send to ANDR
+        self.stm_sendq = self.manager.Queue()           # queue - things to send to STM
+        self.rpi_queue = self.manager.Queue()           # queue - things for RPI to do
+        self.commandq = self.manager.Queue()            # queue - commands from PATH or custom
+        self.proc_sendAndroid = None                    # process - sending messages to ANDR
+        self.proc_recvAndroid = None                    # process - receiving messages from ANDR
+        self.proc_sendSTM = None                        # process - sending messages to STM
+        self.proc_recvSTM = None                        # process - receiving messages from STM
+        self.proc_rpi = None                            # process - run RPI tasks
+        self.proc_robotRun = None                       # process - read commands from queue
+        self.movement_lock = self.manager.Lock()        # lock - per command
+        self.android_dropped = self.manager.Event()     # event - Android disconnected
 
-        # only for task 1
+        # TASK 1 - specific setup
         if obstacleCourse:
-            self.path_obtained = self.manager.Event()           # event - path obtained or not
-            self.send_pic = self.manager.Event()                # event - image sent
-            self.obs_queue = self.manager.Queue()               # queue - obs list
-            self.state_queue = self.manager.Queue()             # queue - states list
-            self.inserting = self.manager.Event()               # event - command insertion
-            self.duplicating = self.manager.Event()             # event - state duplication
+            self.obs_queue = self.manager.Queue()       # queue - obs list
+            self.state_queue = self.manager.Queue()     # queue - states list
+            self.path_obtained = self.manager.Event()   # event - path obtained or not
+            self.send_pic = self.manager.Event()        # event - image sent
+            self.inserting = self.manager.Event()       # event - command insertion
+            self.duplicating = self.manager.Event()     # event - state duplication
+        # TASK 2 - specific setup
         else:
-            self.arrow_recog = self.manager.Event()             # event - arrow recognised
+            self.arrow_recog = self.manager.Event()     # event - arrow recognised
 
-    # FUNCTION - check if API is alive using curl
+    # Check is API is alive
     def pingAPI(self):
         output = subprocess.run(["curl", "http://{}:5000/".format(api_ip)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.strip().decode("utf-8")
         if output == "API is up and running":
             logging.info("API up")
-            return True
+            return True # API up
         else:
             logging.error("API down, check if connected to subnet")
-            return False
+            return False # API down
 
-    # FUNCTION - main process
+    # Start connections and run multiprocessing
     def run(self):
         try:
             # establish connections
@@ -203,9 +220,10 @@ class Brain:
                 self.android.disconnect()
                 self.STM.disconnect()
                 logging.error("some connection not properly established. aborted")
-                self.stop()  # exit program if connection not ready
+                self.stop() # exit program if connection not ready
                 return
-            
+            logging.info("all connections ready")
+
             # start processes
             self.proc_sendAndroid = Process(target=self.sendAndroid)
             self.proc_sendAndroid.start()
@@ -229,9 +247,10 @@ class Brain:
             print("\r>>> MANUAL KILL PROGRAM <<<")
             self.stop()
     
-    # FUNCTION - stop this code
+    # Stop the run
     def stop(self):
         self.android.disconnect()
+        self.STM.disconnect()
         try:
             self.proc_sendAndroid.kill()
             self.proc_recvAndroid.kill()
@@ -240,10 +259,10 @@ class Brain:
             self.proc_rpi.kill()
         except:
             pass
-        self.STM.disconnect()
         logging.info("program exit")
 
-    # FUNCTION - monitor for android connection dropped
+    # Monitor for android connection dropped
+    ### BUG: Doesn't seem to be working but whatever
     def reconnect_android(self):
         logging.info("watching for android disconnection")
 
@@ -273,22 +292,24 @@ class Brain:
             self.android_sendq("RECONNECTED")
             self.android_dropped.clear()
     
-    # FUNCTION - send messages to Android (child process)
+    # Child process that sends messages to ANDR
     def sendAndroid(self):
         while True:
+            # get message from queue
             try:
-               msg = self.android_sendq.get(timeout=0.5)    # get queue item every .5s
+               msg = self.android_sendq.get(timeout=0.5)
             except queue.Empty:
                 continue
-
+            
+            # send message
             try:
                 self.android.send(msg)
-                if msg.startswith("OBS"):
+                if msg.startswith("OBS"):   # indicate that pic sent
                     self.send_pic.set()
             except OSError:
                 self.android_dropped.set()
 
-    # FUNCTION - receive messages from Android (child process)     
+    # Child process that receives messages from ANDR     
     def recvAndroid(self):
         while True:
             # retrieve message
@@ -302,17 +323,15 @@ class Brain:
                 continue
             
             # interpret message
-            ### msg format:
-            # (A) OBS,obstacle_id,row,col,dir       - information about one obstacle
-            # (B) CLEAR,obstacle_id                 - remove one obstacle
-            # (C) START                             - start robot on path
             msg_parts = msg_str.split(",")
-            # case A - insertion
+
+            ### case A - insertion
             if msg_parts[0] == "OBS":
                 obs_item = [20-int(msg_parts[2]), int(msg_parts[3])+1, msg_parts[4], int(msg_parts[1])]
                 self.obs_queue.put(obs_item)
                 logging.info("obstacle inserted - {}".format(str(obs_item)))
-            # case B - removal
+
+            ### case B - removal
             elif msg_parts[0] == "CLEAR":
                 toKeep = []
                 while not self.obs_queue.empty():
@@ -321,26 +340,27 @@ class Brain:
                         toKeep.append(curObs)
                     else:
                         logging.info("obstacle removed - {}".format(str(curObs)))
-                    
                 for obs in toKeep:
                     self.obs_queue.put(obs)
-            # case C - start
+
+            ### case C - start
             elif msg_parts[0] == "START":
                 if not self.pingAPI():
                     logging.error("API down cannot start path")
                     self.android_sendq.put("API down, cannot start")
-                if obstacleCourse and self.obs_queue.empty():
+                if obstacleCourse and self.obs_queue.empty():   # TASK 1 - requires obs_queue to have something
                     logging.error("no obstacles cannot start path")
                     self.android_sendq.put("No obstacles")
                 else:
-                    if obstacleCourse:
-                        self.rpi_queue.put("PATH")  # ask RPI to get path
-                        self.path_obtained.wait()   # wait for RPI to obtain path from algo
+                    if obstacleCourse:  # TASK 1 - requires path from Algo
+                        self.rpi_queue.put("TIMER")
+                        self.rpi_queue.put("PATH")
+                        self.path_obtained.wait()
                         self.android_sendq.put("MOVING")
                     else:
                         self.commandq.put("T2START")
         
-    # FUNCTION - send commands to STM (child process)
+    # Child process that sends messages to STM
     def sendSTM(self):
         while True:
             try:
@@ -352,24 +372,18 @@ class Brain:
             except KeyboardInterrupt:
                 break
     
-    # FUNCTION - receive ack from STM (child process)
+    # Child process that receives messages from STM
     def recvSTM(self):
         while True:
             try:
                 msg = self.STM.receive()
-                if msg is None:
-                    continue
-                # if msg != "stp":
-                logging.debug("msg: {}".format(msg))
-                # NORMAL ACK
-                # if msg.startswith("A") or msg.startswith("C") or msg.startswith("K"):
+                # normal ACK
                 if msg.startswith("ACK"):
                     try:
                         if obstacleCourse:
                             currentPos = self.state_queue.get()
                             if currentPos != "KEEP":
                                 self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                            # logging.debug(str(currentPos))
                         sleep(2)
                         self.movement_lock.release()
                     except RunTimeError:
@@ -385,270 +399,222 @@ class Brain:
             except KeyboardInterrupt:
                 break
 
+    # Child process that runs the robot using commands issued
     def robotRun(self):
+        # in case we need to insert commands for turning
         prevFL = False
         prevFR = False
         prevBL = False
         prevBR = False
-        while True:
+        # task ended flag
+        ended = False
+
+        while not ended:
             try:
-                # get command
-                try:
+                while not self.commandq.empty():
+                    # get command
                     command = self.commandq.get(timeout=0.5)    # get queue item every .5s
-                except queue.Empty:
-                    continue
-                
-                # get permissions
-                self.movement_lock.acquire()
-                
-                # DEBUG
-                # logging.debug("note issue and move to by right location")
-                # sleep(2)
-                # command reading
-                ## FW and BW movements
-                logging.debug(command)
-                
-                if command.startswith("FW"):
-                    distance = int(command[2:])
-                    send_str = "wx{:03d}".format(distance*10)
-                    self.stm_sendq.put(send_str)
-                elif command.startswith("wx"):
-                    self.stm_sendq.put(command)
-                elif command.startswith("BW"):
-                    distance = int(command[2:])
-                    send_str = "sx{:03d}".format(distance*10+2)
-                    self.stm_sendq.put(send_str)
-                elif command.startswith("sx"):
-                    self.stm_sendq.put(command)
+                    
+                    # acquire movement lock
+                    self.movement_lock.acquire()
+                    
+                    # DEBUG
+                    # logging.debug("note issue and move to by right location")
+                    # sleep(2)
 
-                ## TURN movements
-                elif command.startswith("FL"):
-                    # if prevFL or not obstacleCourse:
-                    #     self.stm_sendq.put("fa090")
-                    #     prevFL = False
-                    # else:
-                    #     prevFL = True
-                    #     self.insertCommand(["wx008","FL00","wx005"])
-                    #     self.inserting.wait()
-                    #     self.inserting.clear()
-                    #     self.dupStates(1,2)
-                    #     self.duplicating.wait()
-                    #     self.duplicating.clear()
-                    #     self.movement_lock.release()
-                    self.stm_sendq.put("fa090")
-                elif command.startswith("FR"):
-                    # if prevFR or not obstacleCourse:
-                    #     self.stm_sendq.put("fd090")
-                    #     prevFR = False
-                    # else:
-                    #     prevFR = True
-                    #     self.insertCommand(["wx008","FR00","sx002"])
-                    #     self.inserting.wait()
-                    #     self.inserting.clear()
-                    #     self.dupStates(1,2)
-                    #     self.duplicating.wait()
-                    #     self.duplicating.clear()
-                    #     self.movement_lock.release()
-                    self.stm_sendq.put("fd090")
-                elif command.startswith("BL"):
-                    # if prevBL or not obstacleCourse:
-                    #     self.stm_sendq.put("ba090")
-                    #     prevBL = False
-                    # else:
-                    #     prevBL = True
-                    #     self.insertCommand(["sx005","BL00"])
-                    #     self.inserting.wait()
-                    #     self.inserting.clear()
-                    #     self.dupStates(1,1)
-                    #     self.duplicating.wait()
-                    #     self.duplicating.clear()
-                    #     self.movement_lock.release()
-                    self.stm_sendq.put("ba090")
-                elif command.startswith("BR"):
-                    # if prevBR or not obstacleCourse:
-                    #     self.stm_sendq.put("bd090")
-                    #     prevBR = False
-                    # else:
-                    #     prevBR = True
-                    #     self.insertCommand(["sx006","BR00","sx002"])
-                    #     self.inserting.wait()
-                    #     self.inserting.clear()
-                    #     self.dupStates(1,2)
-                    #     self.duplicating.wait()
-                    #     self.duplicating.clear()
-                    #     self.movement_lock.release()
-                    self.stm_sendq.put("bd090")
-                ## Others
-                elif command.startswith("TP"):
-                    self.rpi_queue.put(command)
-                elif command.startswith("FIN"):
-                    self.movement_lock.release()
-                    logging.info("path ended")
-                    sleep(5)
-                    self.android_sendq.put("ROBOT END")
-                    self.rpi_queue.put("STITCH")
-                    while True:
-                        if self.android_sendq.empty() and self.stm_sendq.empty() and self.rpi_queue.empty():
-                            sleep(5)
-                            self.stop()
+                    # process command
+                    logging.debug(command)
+
+                    ### FW and BW movements
+                    if command.startswith("FW"):
+                        distance = int(command[2:])
+                        send_str = "wx{:03d}".format(distance*10)
+                        self.stm_sendq.put(send_str)
+                    elif command.startswith("BW"):
+                        distance = int(command[2:])
+                        send_str = "sx{:03d}".format(distance*10)
+                        self.stm_sendq.put(send_str)
+
+                    ## TURN movements
+                    elif command.startswith("FL"):
+                        if prevFL or not obstacleCourse:
+                            self.stm_sendq.put("fa090")
+                            prevFL = False
+                        # TASK 1 custom to stay in the 30x30 square
                         else:
-                            continue
+                            prevFL = True
+                            self.insertCommand(["FL00","wx004"])
+                            self.inserting.wait()
+                            self.inserting.clear()
+                            self.dupStates(1,1)
+                            self.duplicating.wait()
+                            self.duplicating.clear()
+                            self.movement_lock.release()
+                    elif command.startswith("FR"):
+                        self.stm_sendq.put("fd090")
+                    elif command.startswith("BL"):
+                        self.stm_sendq.put("ba090")
+                    elif command.startswith("BR"):
+                        self.stm_sendq.put("bd090")
+                    
+                    ### Others
+                    elif command.startswith("TP"):
+                        self.rpi_queue.put(command)
+                    elif command.startswith("FIN"):
+                        self.rpi_queue.put("STITCH")
+                        self.movement_lock.release()
+                        logging.info("run ended")
+                        sleep(5)
+                        self.android_sendq.put("ROBOT END")
 
-                # task 2
-                elif command == "T2START":
-                    self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
-                    self.commandq.put("T2SHORT")
-                elif command == "T2SHORT":
-                    self.rpi_queue.put("T2SHORTPIC")
-                    self.arrow_recog.wait()
-                    self.arrow_recog.clear()
-                elif command == "T2TOLONG":
-                    self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
-                    if self.movement_lock.acquire():
-                        self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
-                        self.commandq.put("T2LONG")
-                elif command == "T2LONG":
-                    self.rpi_queue.put("T2LONGPIC")
-                    self.arrow_recog.wait()
-                    self.arrow_recog.clear()
-                elif command == "T2GOBACK":
-                    pass
-                    # commands to go back to carpark
-                # first obstacle - left
-                elif command == "L1":
-                    self.stm_sendq.put("fa050")
-                elif command == "L2":
-                    self.stm_sendq.put("fd100")
-                elif command == "L3":
-                    self.stm_sendq.put("fa055")
-                # first obstacle - right
-                elif command == "R1":
-                    self.stm_sendq.put("fd050")
-                elif command == "R2":
-                    self.stm_sendq.put("fa100")
-                elif command == "R3":
-                    self.stm_sendq.put("fd055")
-                # second obstacle - left
-                # second obstacle - right
-                elif command == "RR1":
-                    self.stm_sendq.put("fd090")
-                elif command == "RR2":
-                    self.stm_sendq.put("wi150")
-                elif command == "RR3":
-                    self.stm_sendq.put("fa090")
-                elif command == "RR4":
-                    self.stm_sendq.put("sx025")
-                elif command == "RR5":
-                    self.stm_sendq.put("fa090")
-                elif command == "RR6":
-                    self.stm_sendq.put("fd000")             # to straighten before straight
-                elif command == "RR7":
-                    self.stm_sendq.put("wx030")
-                elif command == "RR8":
-                    self.stm_sendq.put("wi150")
-                elif command == "RR9":
-                    self.stm_sendq.put("fa090")
-                # go back carpark
-                else:
-                    logging.error("command not recognised: {}".format(command))
+                        # wait for all queues to clear
+                        while not (self.android_sendq.empty() and self.stm_sendq.empty() and self.rpi_queue.empty()):
+                            continue
+                        ended = True
+
+                    # TASK 2 commands
+                    elif command == "T2START":
+                        self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
+                        self.commandq.put("T2SHORT")
+                    elif command == "T2SHORT":
+                        self.rpi_queue.put("T2SHORTPIC")
+                        self.arrow_recog.wait()
+                        self.arrow_recog.clear()
+                    elif command == "T2TOLONG":
+                        self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
+                        if self.movement_lock.acquire():
+                            self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
+                            self.commandq.put("T2LONG")
+                    elif command == "T2LONG":
+                        self.rpi_queue.put("T2LONGPIC")
+                        self.arrow_recog.wait()
+                        self.arrow_recog.clear()
+                    elif command == "T2GOBACK":
+                        # commands
+                        self.commandq.put("FIN")
+                    
+                    # all other commands (direct STM)
+                    else:
+                        self.stm_sendq.put(command)
+                        logging.debug("custom command: {}".format(command))
             except KeyboardInterrupt:
                 break
+        
+        self.stop()
 
-    # FUNCTION - ask the RPI to do things (child process)
+    # Child process that processes tasks for RPI, mainly API calls
     def rpiTasks(self): 
-        # TODO: add in correction mechanism if unable to detect image - correct to left
+        # counting the time used for the task
         timeStart = None
         timeEnd = None
+        # retry for straight-right deviation
+        retry = True
+
         while True:
-            # get task from queue
             try:
-                try:
-                    task = self.rpi_queue.get(timeout=0.5)     # get queue item every .5s 
-                except queue.Empty:
-                    continue
+                while not self.rpi_queue.empty():
+                    # get task
+                    task = self.rpi_queue.get(timeout=0.5)
 
-                # TASK - take picture
-                ### task format:
-                # (A) TPxx  - take picture
-                # (B) PATH  - get path from algo
-                # case A - take picture
-                if task.startswith("TP"):
-                    logging.debug("taking picture")
+                    # execute task
+                    logging.debug(task)
+
+                    ### case A - start timer
+                    if task.startswith("TIMER"):
+                        timeStart = time()
+
+                    ### case B - get path (TASK 1)
+                    elif task.startswith("PATH"):
+                        # calling API
+                        obs = []
+                        while not self.obs_queue.empty():
+                            obs.append(self.obs_queue.get())
+                        url = f"http://{api_ip}:5000/get-path"
+                        payload = {
+                            "robotPos": robotPos,
+                            "obs": obs
+                        }
+                        headers = {"Content-type": "application/json", "Accept": "text/plain"}
+                        response = requests.post(url, headers=headers, json=payload)
+
+                        # parse path response
+                        data = response.json()
+                        commands = data["path"]
+                        states = data["states"]
+                        for command in commands:
+                            self.commandq.put(command)
+                        self.commandq.put("FIN")
+                        for state in states[1:]:
+                            self.state_queue.put(state)
+                        self.path_obtained.set()
                     
-                    # DEBUG - skip taking pictures
-                    # logging.debug("SKIPPING PICTURES")
+                    ### case C - take picture (TASK 1)
+                    elif task.startswith("TP"):
+                        # DEBUG - skip taking pictures
+                        # logging.debug("SKIPPING PICTURES")
 
-                    obsNo = int(task[2:])
-                    
-                    # capturing image
-                    with picamera.PiCamera() as camera:
-                        camera.resolution = (640,640)
-                        camera.start_preview()
-                        sleep(2)
-                        camera.capture(f"OBS{obsNo}.jpg")
-                        camera.close()
+                        obsNo = int(task[2:])
+                        
+                        # capturing image
+                        with picamera.PiCamera() as camera:
+                            camera.resolution = (640,640)
+                            camera.start_preview()
+                            sleep(2)
+                            camera.capture(f"OBS{obsNo}.jpg")
+                            camera.close()
 
-                    # calling API
-                    url = f"http://{api_ip}:5000/test-image"
-                    with open(f"OBS{obsNo}.jpg", "rb") as f:
-                        image = f.read()
-                    payload = {
-                        "image": base64.b64encode(image).decode('utf-8'),
-                        "image_type": "jpg",
-                        "obs": obsNo
-                    }
-                    headers = {"Content-type": "application/json", "Accept": "text/plain"}
-                    response = requests.post(url, headers=headers, json=payload)
+                        # calling API
+                        url = f"http://{api_ip}:5000/test-image"
+                        with open(f"OBS{obsNo}.jpg", "rb") as f:
+                            image = f.read()
+                        payload = {
+                            "image": base64.b64encode(image).decode('utf-8'),
+                            "image_type": "jpg",
+                            "obs": obsNo
+                        }
+                        headers = {"Content-type": "application/json", "Accept": "text/plain"}
+                        response = requests.post(url, headers=headers, json=payload)
 
-                    # parse id response
-                    data = response.json()
-                    print(data["id"]=="NIL")
-                    if data["id"] != "NIL":
-                        # msg format: OBS,obstacle_id,image_id
-                        self.android_sendq.put("OBS,{},{}".format(obsNo, data["id"]))
-                    else:
-                        logging.error("API cannot detect image")
-                        self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
-                    
-                    # self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
-                    # start moving again
-                    self.send_pic.wait()
-                    self.send_pic.clear()
-                    self.movement_lock.release()
-                # case B - get path
-                elif task.startswith("PATH"):
-                    logging.debug("getting path")
-                    timeStart = time()
-                    # calling API
-                    obs = []
-                    while not self.obs_queue.empty():
-                        obs.append(self.obs_queue.get())
-                    url = f"http://{api_ip}:5000/get-path"
-                    payload = {
-                        "robotPos": robotPos,
-                        "obs": obs
-                    }
-                    headers = {"Content-type": "application/json", "Accept": "text/plain"}
-                    response = requests.post(url, headers=headers, json=payload)
+                        # parse id response
+                        data = response.json()
+                        if data["id"] != "NIL":
+                            # msg format: OBS,obstacle_id,image_id
+                            self.android_sendq.put("OBS,{},{}".format(obsNo, data["id"]))
+                        else:
+                            logging.error("API cannot detect image")
+                            
+                            # TODO: see if anyway to only run this if the distance moved more than XX
+                            if retry and obstacleCourse:
+                                self.insertCommand(['sx010', 'fa005', 'wx008', task]) ## TOTEST
+                                self.inserting.wait()
+                                self.inserting.clear()
+                                self.dupStates(3,0)
+                                self.duplicating.wait()
+                                self.duplicating.clear()
+                                retry = False
+                            else:
+                                retry = True
+                                self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
+                        
+                        # DEBUG
+                        # self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
 
-                    # parse path response
-                    data = response.json()
-                    commands = data["path"]
-                    states = data["states"]
-                    for command in commands:
-                        self.commandq.put(command)
-                    self.commandq.put("FIN")
-                    for state in states[1:]:
-                        self.state_queue.put(state)
-                    self.path_obtained.set()
-                elif task.startswith("STITCH"):
-                    logging.debug("stitching image")
-                    timeEnd = time()
-                    logging.info("time used for run: {}".format(int(timeEnd-timeStart)))
-                    url = f"http://{api_ip}:5000/stitch-image"
-                    requests.get(url)
-                elif task.startswith("T2"):
-                    if task == "T2SHORTPIC":
+                        # start moving again
+                        self.send_pic.wait()
+                        self.send_pic.clear()
+                        self.movement_lock.release()
+
+                    ### case D: stitch images
+                    elif task.startswith("STITCH"):
+                        timeEnd = time()
+                        timeTaken = int(timeEnd - timeStart)
+                        logging.info("time used for run: {}m {}s".format(timeTaken/60, timeTaken%60))
+                        url = f"http://{api_ip}:5000/stitch-image"
+                        requests.get(url)
+                        logging.info("stitching completed")
+
+                    ### case E: first obstacle picture (TASK 2)
+                    elif task.startswith("T2SHORTPIC"):
                         # capturing image
                         with picamera.PiCamera() as camera:
                             camera.resolution = (640,640)
@@ -664,7 +630,7 @@ class Brain:
                         payload = {
                             "image": base64.b64encode(image).decode('utf-8'),
                             "image_type": "jpg",
-                            "obs": 0    # not important
+                            "obs": 1    # not important
                         }
                         headers = {"Content-type": "application/json", "Accept": "text/plain"}
                         response = requests.post(url, headers=headers, json=payload)
@@ -673,13 +639,13 @@ class Brain:
                         data = response.json()
                         if data["id"] != "NIL":
                             if data["id"] == "38": # right
-                                self.commandq.put("R1")
-                                self.commandq.put("R2")
-                                self.commandq.put("R3")
+                                self.commandq.put("fd050")
+                                self.commandq.put("fa100")
+                                self.commandq.put("fd055")
                             elif data["id"] == "39": # left
-                                self.commandq.put("L1")
-                                self.commandq.put("L2")
-                                self.commandq.put("L3")
+                                self.commandq.put("fa050")
+                                self.commandq.put("fd100")
+                                self.commandq.put("fa055")
                             self.commandq.put("T2TOLONG")
                         else:
                             logging.info("API cannot detect image")
@@ -688,7 +654,8 @@ class Brain:
                         self.arrow_recog.set()
                         self.movement_lock.release()
 
-                    elif task == "T2LONGPIC":
+                    ### case F: second obstacle picture (TASK 2)
+                    elif task.startswith("T2LONGPIC"):
                         # capturing image
                         with picamera.PiCamera() as camera:
                             camera.resolution = (640,640)
@@ -704,7 +671,7 @@ class Brain:
                         payload = {
                             "image": base64.b64encode(image).decode('utf-8'),
                             "image_type": "jpg",
-                            "obs": 0    # not important
+                            "obs": 2    # not important
                         }
                         headers = {"Content-type": "application/json", "Accept": "text/plain"}
                         response = requests.post(url, headers=headers, json=payload)
@@ -712,11 +679,13 @@ class Brain:
                         # parse id response
                         data = response.json()
                         if data["id"] != "NIL":
-                            if data["id"] == "38 long": #right
+                            if data["id"] == "38" or data["id"] == "38 long": #right
+                                # TODO
                                 self.commandq.put()    # all the commands for turning right
-                            elif data["id"] == "39 long" : # left
+                            elif data["id"] == "39" or data["id"] == "39 long" : # left
+                                # TODO
                                 self.commandq.put()    # all the commands for turning left
-                            self.commandq.put("T2GOBACK")
+                            self.commandq.put("T2GOBACK") # TODO
                         else:
                             logging.error("API cannot detect image")
                         
@@ -725,7 +694,8 @@ class Brain:
                         self.movement_lock.release()
             except KeyboardInterrupt:
                 break
-
+    
+    # Helper function to insert commands to front of queue
     def insertCommand(self, commands):
         logging.debug("inserting commands")
         while not self.commandq.empty():
@@ -736,6 +706,7 @@ class Brain:
             self.commandq.put(command)
         self.inserting.set()
 
+    # Helper function to duplicate the states of the robot for TASK 1
     def dupStates(self, prev, next):
         logging.debug("duplicating states")
         states = []
@@ -753,7 +724,6 @@ class Brain:
         for state in states:
             self.state_queue.put(state)
         self.duplicating.set()
-
                     
 if __name__ == "__main__":
     logging.basicConfig(level=logLevel,format="[%(levelname)s] %(funcName)s - %(message)s")
