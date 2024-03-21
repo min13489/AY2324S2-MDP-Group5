@@ -21,7 +21,6 @@ from multiprocessing import Process
 import os
 from math import ceil
 
-
 ### CODES ###
 
 # SETUP - api
@@ -105,16 +104,26 @@ def testImage():
         
         # send image into model
         id = None
-
         if modelMode:   # yen's model
             try:
                 # predict the id of image
+                numPredictions = 0
                 results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False)
                 # results = yolo("../images/{}.jpg".format(recvDateTime))
 
                 # if no issues with prediction
                 if results:
-                    firstBox = results[0].boxes[0]                  # get first result
+                    largest_area = 0
+                    largest_area_index = 0
+                    for result_index in range(len(results)):
+                        box = results[result_index].boxes      
+                        area = (box.xyxy[0][2] - box.xyxy[0][0]) * (box.xyxy[0][3] - box.xyxy[0][1])
+                        if area > largest_area:
+                            largest_area = area
+                            largest_area_index = result_index
+                            
+                    numPredictions = len(results)                   # get number of result found
+                    firstBox = results[largest_area_index].boxes[0]                  # get first result
                     firstClass = yolo.names[int(firstBox.cls)]      # get id
                     firstConf = float(firstBox.conf)                # get conf
                     print("\n[INFO] test-image: predicted {} with confidence of {:.2f}".format(firstClass, firstConf))
@@ -123,7 +132,7 @@ def testImage():
 
                     # draw the bounding box
                     labels = ["{}, id={}".format(imageNameMap[id], id)]            # label with name and id
-                    detections = sv.Detections.from_ultralytics(results[0])[0]     # for drawing of box - only consider first one
+                    detections = sv.Detections.from_ultralytics(results[largest_area_index])[0]     # for drawing of box - only consider first one
                     image = cv2.imread("../images/{}.jpg".format(recvDateTime))    # actual image
                     bounding_box_annotator = sv.BoundingBoxAnnotator()
                     label_annotator = sv.LabelAnnotator(text_position=sv.geometry.core.Position.TOP_LEFT_CUSTOM)
@@ -161,9 +170,9 @@ def testImage():
 
         # send id back
         if id is not None:
-            return jsonify({"id": id})
+            return jsonify({"num_predictions": numPredictions, "id": id})
         else:
-            return jsonify({"id": "NIL"})
+            return jsonify({"num_predictions": numPredictions, "id": "NIL"})
 
 @app.route('/stitch-image', methods=["GET"])
 def stitchImage():
