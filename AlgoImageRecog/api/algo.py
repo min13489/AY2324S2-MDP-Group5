@@ -4,12 +4,12 @@ from python_tsp.exact import solve_tsp_dynamic_programming
 
 # variables for turning radius
 fwd_l_row = 2   # 20 40 increment for FL
-fwd_l_col = 4
+fwd_l_col = 3
 fwd_r_row = 2   # 20 30 increment for FR
 fwd_r_col = 3
 bwd_l_row = 3   # 30 20 increment for BL
 bwd_l_col = 2
-bwd_r_row = 4   # 40 20 increment for BR?
+bwd_r_row = 3   # 40 20 increment for BR?
 bwd_r_col = 2
 
 # initialise map
