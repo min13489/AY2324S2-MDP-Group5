@@ -32,7 +32,9 @@ CORS(app)
 modelMode = True   # True for Yen, False for CR
 if modelMode:
     # yolo = YOLO("yen_3_a.pt")
-    yolo = YOLO("yen_2_b.pt")
+    modelName = "task2_ver4.pt"
+    yolo = YOLO(modelName)
+    # yolo = YOLO("yen_2_b.pt")
 imageNameMap = {
     "11": "Number 1",
     "12": "Number 2",
@@ -77,6 +79,8 @@ def resetEnv():
 @app.route("/")
 def hello():
     resetEnv()
+    yolo = YOLO(modelName)
+    yolo.predict("../images/examples.jpg", device='cpu')
     return "API is up and running\n"
 
 # ROUTE - to retrieve path from algo
@@ -108,7 +112,7 @@ def testImage():
             try:
                 # predict the id of image
                 numPredictions = 0
-                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False)
+                results = yolo.predict(source="../images/{}.jpg".format(recvDateTime), verbose=False, device='cpu')
                 # results = yolo("../images/{}.jpg".format(recvDateTime))
 
                 # if no issues with prediction
