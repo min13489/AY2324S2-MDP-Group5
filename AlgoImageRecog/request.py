@@ -8,8 +8,73 @@ from api.algo import generatePath
 # x = requests.get(url)
 # print(x.text)
 
+print("Testing image 1, should be 34")
 url = "http://localhost:5000/test-image"
 image_name = "images/" + "example.jpg"
+image_type = 'jpg'
+with open(image_name, "rb") as f:
+    image = f.read()
+payload = {
+    "image": base64.b64encode(image).decode("utf-8"),
+    "image_type": image_type,
+    "obs": 0
+}
+
+headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+response = requests.post(url, headers=headers, json=payload)
+try:
+    data = response.json()
+    print(data)
+except:
+    print("No response.")
+
+
+print("Testing image2, should return 2 predictions")
+url = "http://localhost:5000/test-image"
+image_name = "images/" + "example2.jpg"
+image_type = 'jpg'
+with open(image_name, "rb") as f:
+    image = f.read()
+payload = {
+    "image": base64.b64encode(image).decode("utf-8"),
+    "image_type": image_type,
+    "obs": 0
+}
+
+headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+response = requests.post(url, headers=headers, json=payload)
+try:
+    data = response.json()
+    print(data)
+except:
+    print("No response.")
+
+
+
+
+print("Testing image3, should return 2 predictions")
+url = "http://localhost:5000/test-image"
+image_name = "images/" + "example3.jpg"
+image_type = 'jpg'
+with open(image_name, "rb") as f:
+    image = f.read()
+payload = {
+    "image": base64.b64encode(image).decode("utf-8"),
+    "image_type": image_type,
+    "obs": 0
+}
+
+headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+response = requests.post(url, headers=headers, json=payload)
+try:
+    data = response.json()
+    print(data)
+except:
+    print("No response.")
+
+print("Testing image4, should return 2 predictions")
+url = "http://localhost:5000/test-image"
+image_name = "images/" + "example4.jpg"
 image_type = 'jpg'
 with open(image_name, "rb") as f:
     image = f.read()

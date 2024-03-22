@@ -14,15 +14,15 @@ import base64, picamera
 
 ### SWITCHES ###
 
-obstacleCourse = 1           # 1 - obstacle course 0 - fastest car
+obstacleCourse = 0           # 1 - obstacle course 0 - fastest car
 # logLevel = logging.INFO      # logging.INFO - normal run
 logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
 ### GLOBALS ###
 
 robotPos = [2,2,'N']            # occupying bottom left corner (9 squares)
-api_ip = "192.168.5.29"         # min's computer IP
-# api_ip = "192.168.5.22"         # yen's computer IP
+# api_ip = "192.168.5.29"         # min's computer IP
+api_ip = "192.168.5.22"         # yen's computer IP
 # api_ip = "192.168.5.23"         # dext's computer IP
 
 ### CODES ###
@@ -384,7 +384,7 @@ class Brain:
                             currentPos = self.state_queue.get()
                             if currentPos != "KEEP":
                                 self.android_sendq.put("ROBOT,{},{},{}".format(str(20-currentPos[0]),str(currentPos[1]-1),currentPos[2]))
-                        sleep(2)
+                        # sleep(2) # check if this affects
                         self.movement_lock.release()
                     except RunTimeError:
                         logging.error("tried to release a released lock")
@@ -438,25 +438,62 @@ class Brain:
                     ## TURN movements
                     elif command.startswith("FL"):
                         if prevFL or not obstacleCourse:
-                            self.stm_sendq.put("fa090")
+                            self.stm_sendq.put("fa092")
                             prevFL = False
                         # TASK 1 custom to stay in the 30x30 square
                         else:
                             prevFL = True
-                            self.insertCommand(["FL00","wx004"])
+                            self.insertCommand(["sx002","FL00","sx005"])
                             self.inserting.wait()
                             self.inserting.clear()
-                            self.dupStates(1,1)
+                            self.dupStates(1,2) # keep at previous for 1, keep at next for 2
                             self.duplicating.wait()
                             self.duplicating.clear()
                             self.movement_lock.release()
                     elif command.startswith("FR"):
-                        self.stm_sendq.put("fd090")
+                        if prevFR or not obstacleCourse:
+                            self.stm_sendq.put("fd085") # Yen change
+                            prevFR = False
+                        # TASK 1 custom to stay in the 30x30 square
+                        else:
+                            prevFR = True
+                            self.insertCommand(["wx003","FR00"])
+                            self.inserting.wait()
+                            self.inserting.clear()
+                            self.dupStates(1,1) # keep at previous for 1, keep at next for 1
+                            self.duplicating.wait()
+                            self.duplicating.clear()
+                            self.movement_lock.release()
                     elif command.startswith("BL"):
-                        self.stm_sendq.put("ba090")
+                        if prevBL or not obstacleCourse:
+                            self.stm_sendq.put("ba091") # Yen change from 90 to 85
+                            prevBL = False
+                        # TASK 1 custom to stay in the 30x30 square
+                        else:
+                            prevBL = True
+                            self.insertCommand(["BL00","sx003"])
+                            self.inserting.wait()
+                            self.inserting.clear()
+                            self.dupStates(0,2) # don't keep at previous, keep at next for 2
+                            self.duplicating.wait()
+                            self.duplicating.clear()
+                            self.movement_lock.release()
                     elif command.startswith("BR"):
-                        self.stm_sendq.put("bd090")
-                    
+                        if prevBR or not obstacleCourse:
+                            # self.stm_sendq.put("bd090")
+                            self.stm_sendq.put("bd085") # Yen change from 85 to 80
+                            prevBR = False
+                        # TASK 1 custom to stay in the 30x30 square
+                        else:
+                            prevBR = True
+                            self.insertCommand(["sx003","BR00","sx004"])
+                            self.inserting.wait()
+                            self.inserting.clear()
+                            self.dupStates(1,2)
+                            self.duplicating.wait()
+                            self.duplicating.clear()
+                            self.movement_lock.release()
+
                     ### Others
                     elif command.startswith("TP"):
                         self.rpi_queue.put(command)
@@ -482,8 +519,11 @@ class Brain:
                         self.arrow_recog.clear()
                     elif command == "T2TOLONG":
                         self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
+                        # self.stm_sendq.put("sz150")  
                         if self.movement_lock.acquire():
-                            self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
+                            self.movement_lock.release()
+                            # self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
+                            # self.stm_sendq.put("sx020")
                             self.commandq.put("T2LONG")
                     elif command == "T2LONG":
                         self.rpi_queue.put("T2LONGPIC")
@@ -491,6 +531,8 @@ class Brain:
                         self.arrow_recog.clear()
                     elif command == "T2GOBACK":
                         # commands
+                        self.stm_sendq.put("ALLAH")
+                        logging.info("by right should have gone back here but waiting for new commands")
                         self.commandq.put("FIN")
                     
                     # all other commands (direct STM)
@@ -508,7 +550,7 @@ class Brain:
         timeStart = None
         timeEnd = None
         # retry for straight-right deviation
-        retry = True
+        # retry = True
 
         while True:
             try:
@@ -584,17 +626,20 @@ class Brain:
                             logging.error("API cannot detect image")
                             
                             # TODO: see if anyway to only run this if the distance moved more than XX
-                            if retry and obstacleCourse:
-                                self.insertCommand(['sx010', 'fa005', 'wx008', task]) ## TOTEST
-                                self.inserting.wait()
-                                self.inserting.clear()
-                                self.dupStates(3,0)
-                                self.duplicating.wait()
-                                self.duplicating.clear()
-                                retry = False
-                            else:
-                                retry = True
-                                self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
+                            # BUG
+                            # print(retry and obstacleCourse)
+                            # if retry and obstacleCourse:
+                            #     self.insertCommand(['sx010', 'fa005', 'wx008', task]) ## TOTEST
+                            #     self.inserting.wait()
+                            #     self.inserting.clear()
+                            #     self.dupStates(3,0)
+                            #     self.duplicating.wait()
+                            #     self.duplicating.clear()
+                            #     retry = False
+                            # else:
+                            #     retry = True
+                            #     self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
+                            self.android_sendq.put("OBS,{},{}".format(obsNo, "X"))
                         
                         # DEBUG
                         # self.android_sendq.put("OBS,{},{}".format(obsNo, "D"))
@@ -640,12 +685,15 @@ class Brain:
                         if data["id"] != "NIL":
                             if data["id"] == "38": # right
                                 self.commandq.put("fd050")
-                                self.commandq.put("fa100")
-                                self.commandq.put("fd055")
+                                self.commandq.put("fa110")
+                                self.commandq.put("fd050")
+                                self.commandq.put("sx020")#
                             elif data["id"] == "39": # left
-                                self.commandq.put("fa050")
+                                # self.commandq.put("sx005") # Yen testing
+                                self.commandq.put("fa060")
                                 self.commandq.put("fd100")
-                                self.commandq.put("fa055")
+                                self.commandq.put("fa053")
+                                self.commandq.put("sx020")#
                             self.commandq.put("T2TOLONG")
                         else:
                             logging.info("API cannot detect image")
@@ -681,10 +729,51 @@ class Brain:
                         if data["id"] != "NIL":
                             if data["id"] == "38" or data["id"] == "38 long": #right
                                 # TODO
-                                self.commandq.put()    # all the commands for turning right
+                                # self.commandq.put()    # all the commands for turning right
+                                
+                                # this is correct ones
+                                self.commandq.put("fd090")
+                                self.commandq.put("sx030")
+                                self.commandq.put("wi150")
+                                self.commandq.put("sx015")
+                                self.commandq.put("fa090")
+                                self.commandq.put("fd000")
+                                self.commandq.put("sx005")
+                                self.commandq.put("fa090")
+                                self.commandq.put("fd000")
+                                # self.commandq.put("wx020") ## Yen added testing
+                                self.commandq.put("wi150")
+                                self.commandq.put("sx005")
+                                self.commandq.put("fa090")
+                                self.commandq.put("fd000")
+                                """
+                                # This is testing ones
+                                self.commandq.put("fa090")
+                                self.commandq.put("fd000")
+                                self.commandq.put("sx020")
+                                self.commandq.put("wi150")
+                                self.commandq.put("fd093")
+                                # self.commandq.put("sx005")
+                                self.commandq.put("fd093")
+                                self.commandq.put("fa000")
+                                self.commandq.put("wi200")
+                                # self.commandq.put("sx005")
+                                self.commandq.put("fd090")
+                                """
                             elif data["id"] == "39" or data["id"] == "39 long" : # left
-                                # TODO
-                                self.commandq.put()    # all the commands for turning left
+                                #
+                                # self.commandq.put()    # all the commands for turning left
+                                self.commandq.put("fa090")
+                                self.commandq.put("fd000")
+                                self.commandq.put("sx020")
+                                self.commandq.put("wi150")
+                                self.commandq.put("fd090")
+                                self.commandq.put("sx005")
+                                self.commandq.put("fd090")
+                                self.commandq.put("fa000")
+                                self.commandq.put("wi200")
+                                self.commandq.put("sx005")
+                                self.commandq.put("fd090")
                             self.commandq.put("T2GOBACK") # TODO
                         else:
                             logging.error("API cannot detect image")
@@ -716,8 +805,9 @@ class Brain:
             if first:
                 for i in range(prev):
                     states.append("KEEP")
-                for i in range(next):
-                    states.append(state)
+                if next > 0:
+                    for i in range(next):
+                        states.append(state)
                 first = False
             else:
                 states.append(state)
