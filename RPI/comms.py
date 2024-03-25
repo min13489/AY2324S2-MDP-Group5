@@ -15,6 +15,7 @@ import base64, picamera
 ### SWITCHES ###
 
 obstacleCourse = 0           # 1 - obstacle course 0 - fastest car
+floor = "outside"
 # logLevel = logging.INFO      # logging.INFO - normal run
 logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
@@ -22,8 +23,8 @@ logLevel = logging.DEBUG     # logging.DEBUG - for debug msgs
 
 robotPos = [2,2,'N']            # occupying bottom left corner (9 squares)
 # api_ip = "192.168.5.29"         # min's computer IP
-api_ip = "192.168.5.22"         # yen's computer IP
-# api_ip = "192.168.5.23"         # dext's computer IP
+# api_ip = "192.168.5.22"         # yen's computer IP
+api_ip = "192.168.5.23"         # dext's computer IP
 
 ### CODES ###
 
@@ -260,6 +261,7 @@ class Brain:
         except:
             pass
         logging.info("program exit")
+        sys.exit(0)
 
     # Monitor for android connection dropped
     ### BUG: Doesn't seem to be working but whatever
@@ -358,6 +360,7 @@ class Brain:
                         self.path_obtained.wait()
                         self.android_sendq.put("MOVING")
                     else:
+                        self.rpi_queue.put("TIMER")
                         self.commandq.put("T2START")
         
     # Child process that sends messages to STM
@@ -392,7 +395,7 @@ class Brain:
                 elif msg.startswith("BMP") and not obstacleCourse:
                     logging.debug("BMP from ultrasonic sensor")
                     try:
-                        sleep(2)
+                        # sleep(2) # check if this affects
                         self.movement_lock.release()
                     except RuntimeError:
                         logging.error("tried to release a released lock")
@@ -438,58 +441,58 @@ class Brain:
                     ## TURN movements
                     elif command.startswith("FL"):
                         if prevFL or not obstacleCourse:
-                            self.stm_sendq.put("fa092")
+                            self.stm_sendq.put("fa078")
                             prevFL = False
                         # TASK 1 custom to stay in the 30x30 square
                         else:
                             prevFL = True
-                            self.insertCommand(["sx002","FL00","sx005"])
-                            self.inserting.wait()
-                            self.inserting.clear()
-                            self.dupStates(1,2) # keep at previous for 1, keep at next for 2
-                            self.duplicating.wait()
-                            self.duplicating.clear()
-                            self.movement_lock.release()
-                    elif command.startswith("FR"):
-                        if prevFR or not obstacleCourse:
-                            self.stm_sendq.put("fd085") # Yen change
-                            prevFR = False
-                        # TASK 1 custom to stay in the 30x30 square
-                        else:
-                            prevFR = True
-                            self.insertCommand(["wx003","FR00"])
+                            self.insertCommand(["wx003","FL00"])
                             self.inserting.wait()
                             self.inserting.clear()
                             self.dupStates(1,1) # keep at previous for 1, keep at next for 1
                             self.duplicating.wait()
                             self.duplicating.clear()
                             self.movement_lock.release()
-                    elif command.startswith("BL"):
-                        if prevBL or not obstacleCourse:
-                            self.stm_sendq.put("ba091") # Yen change from 90 to 85
-                            prevBL = False
+                    elif command.startswith("FR"):
+                        if prevFR or not obstacleCourse:
+                            self.stm_sendq.put("fd100") # Yen change
+                            prevFR = False
                         # TASK 1 custom to stay in the 30x30 square
                         else:
-                            prevBL = True
-                            self.insertCommand(["BL00","sx003"])
+                            prevFR = True
+                            self.insertCommand(["FR00","sx005"])
                             self.inserting.wait()
                             self.inserting.clear()
                             self.dupStates(0,2) # don't keep at previous, keep at next for 2
                             self.duplicating.wait()
                             self.duplicating.clear()
                             self.movement_lock.release()
+                    elif command.startswith("BL"):
+                        if prevBL or not obstacleCourse:
+                            self.stm_sendq.put("ba082") # Yen change from 90 to 85
+                            prevBL = False
+                        # TASK 1 custom to stay in the 30x30 square
+                        else:
+                            prevBL = True
+                            self.insertCommand(["sx002", "BL00","sx005"])
+                            self.inserting.wait()
+                            self.inserting.clear()
+                            self.dupStates(1,2) # don't keep at previous, keep at next for 2
+                            self.duplicating.wait()
+                            self.duplicating.clear()
+                            self.movement_lock.release()
                     elif command.startswith("BR"):
                         if prevBR or not obstacleCourse:
                             # self.stm_sendq.put("bd090")
-                            self.stm_sendq.put("bd085") # Yen change from 85 to 80
+                            self.stm_sendq.put("bd100") # Yen change from 85 to 80
                             prevBR = False
                         # TASK 1 custom to stay in the 30x30 square
                         else:
                             prevBR = True
-                            self.insertCommand(["sx003","BR00","sx004"])
+                            self.insertCommand(["wx003","BR00"])
                             self.inserting.wait()
                             self.inserting.clear()
-                            self.dupStates(1,2)
+                            self.dupStates(1,1)
                             self.duplicating.wait()
                             self.duplicating.clear()
                             self.movement_lock.release()
@@ -519,11 +522,8 @@ class Brain:
                         self.arrow_recog.clear()
                     elif command == "T2TOLONG":
                         self.stm_sendq.put("wz150")             # ultrasonic - interrupt @ 40, stop at 30
-                        # self.stm_sendq.put("sz150")  
                         if self.movement_lock.acquire():
-                            self.movement_lock.release()
-                            # self.stm_sendq.put("sz150")         # ultrasonic - interrupt @ 40, stop at 50
-                            # self.stm_sendq.put("sx020")
+                            self.stm_sendq.put("sz150")
                             self.commandq.put("T2LONG")
                     elif command == "T2LONG":
                         self.rpi_queue.put("T2LONGPIC")
@@ -532,7 +532,8 @@ class Brain:
                     elif command == "T2GOBACK":
                         # commands
                         self.stm_sendq.put("ALLAH")
-                        logging.info("by right should have gone back here but waiting for new commands")
+                        self.movement_lock.release()
+                        # logging.info("by right should have gone back here but waiting for new commands")
                         self.commandq.put("FIN")
                     
                     # all other commands (direct STM)
@@ -549,8 +550,6 @@ class Brain:
         # counting the time used for the task
         timeStart = None
         timeEnd = None
-        # retry for straight-right deviation
-        # retry = True
 
         while True:
             try:
@@ -653,7 +652,7 @@ class Brain:
                     elif task.startswith("STITCH"):
                         timeEnd = time()
                         timeTaken = int(timeEnd - timeStart)
-                        logging.info("time used for run: {}m {}s".format(timeTaken/60, timeTaken%60))
+                        logging.info("time used for run: {}m {}s".format(timeTaken//60, timeTaken%60))
                         url = f"http://{api_ip}:5000/stitch-image"
                         requests.get(url)
                         logging.info("stitching completed")
@@ -662,7 +661,7 @@ class Brain:
                     elif task.startswith("T2SHORTPIC"):
                         # capturing image
                         with picamera.PiCamera() as camera:
-                            camera.resolution = (640,640)
+                            camera.resolution = (960,960)
                             camera.start_preview()
                             sleep(2)
                             camera.capture(f"T2short.jpg")
@@ -682,18 +681,24 @@ class Brain:
 
                         # parse id response
                         data = response.json()
+
                         if data["id"] != "NIL":
                             if data["id"] == "38": # right
-                                self.commandq.put("fd050")
-                                self.commandq.put("fa110")
-                                self.commandq.put("fd050")
-                                self.commandq.put("sx020")#
+                                self.commandq.put("sx010")
+                                self.commandq.put("fd055")
+                                self.commandq.put("wx002")
+                                self.commandq.put("fa043")
+                                self.commandq.put("wx010")
+                                self.commandq.put("fa043")
+                                self.commandq.put("wx005")
+                                self.commandq.put("fd055")
                             elif data["id"] == "39": # left
-                                # self.commandq.put("sx005") # Yen testing
-                                self.commandq.put("fa060")
-                                self.commandq.put("fd100")
-                                self.commandq.put("fa053")
-                                self.commandq.put("sx020")#
+                                self.commandq.put("sx010")
+                                self.commandq.put("fa050")
+                                self.commandq.put("fd060")
+                                self.commandq.put("wx010")
+                                self.commandq.put("fd060")
+                                self.commandq.put("fa046")
                             self.commandq.put("T2TOLONG")
                         else:
                             logging.info("API cannot detect image")
@@ -706,7 +711,7 @@ class Brain:
                     elif task.startswith("T2LONGPIC"):
                         # capturing image
                         with picamera.PiCamera() as camera:
-                            camera.resolution = (640,640)
+                            camera.resolution = (960, 960)
                             camera.start_preview()
                             sleep(2)
                             camera.capture(f"T2long.jpg")
@@ -727,54 +732,31 @@ class Brain:
                         # parse id response
                         data = response.json()
                         if data["id"] != "NIL":
-                            if data["id"] == "38" or data["id"] == "38 long": #right
-                                # TODO
-                                # self.commandq.put()    # all the commands for turning right
-                                
-                                # this is correct ones
-                                self.commandq.put("fd090")
-                                self.commandq.put("sx030")
-                                self.commandq.put("wi150")
-                                self.commandq.put("sx015")
-                                self.commandq.put("fa090")
-                                self.commandq.put("fd000")
-                                self.commandq.put("sx005")
-                                self.commandq.put("fa090")
-                                self.commandq.put("fd000")
-                                # self.commandq.put("wx020") ## Yen added testing
-                                self.commandq.put("wi150")
-                                self.commandq.put("sx005")
-                                self.commandq.put("fa090")
-                                self.commandq.put("fd000")
-                                """
-                                # This is testing ones
-                                self.commandq.put("fa090")
-                                self.commandq.put("fd000")
+                            if data["id"] == "38" or data["id"] == "38 long": # right
+                                if floor == "outside":
+                                    self.commandq.put("fd096")
+                                else:
+                                    self.commandq.put("fd100")
                                 self.commandq.put("sx020")
                                 self.commandq.put("wi150")
-                                self.commandq.put("fd093")
-                                # self.commandq.put("sx005")
-                                self.commandq.put("fd093")
-                                self.commandq.put("fa000")
-                                self.commandq.put("wi200")
-                                # self.commandq.put("sx005")
-                                self.commandq.put("fd090")
-                                """
+                                self.commandq.put("wx005")
+                                self.commandq.put("fa080")
+                                self.commandq.put("wx002")
+                                self.commandq.put("fa080")
+                                self.commandq.put("wi150")
+                                self.commandq.put("wx010")
+                                self.commandq.put("fa076")
                             elif data["id"] == "39" or data["id"] == "39 long" : # left
-                                #
-                                # self.commandq.put()    # all the commands for turning left
-                                self.commandq.put("fa090")
-                                self.commandq.put("fd000")
+                                self.commandq.put("fa080")
                                 self.commandq.put("sx020")
                                 self.commandq.put("wi150")
-                                self.commandq.put("fd090")
-                                self.commandq.put("sx005")
-                                self.commandq.put("fd090")
-                                self.commandq.put("fa000")
-                                self.commandq.put("wi200")
-                                self.commandq.put("sx005")
-                                self.commandq.put("fd090")
-                            self.commandq.put("T2GOBACK") # TODO
+                                self.commandq.put("wx005")
+                                self.commandq.put("fd098")
+                                self.commandq.put("sx015")
+                                self.commandq.put("fd094")
+                                self.commandq.put("wi150")
+                                self.commandq.put("fd100")
+                            self.commandq.put("T2GOBACK")
                         else:
                             logging.error("API cannot detect image")
                         

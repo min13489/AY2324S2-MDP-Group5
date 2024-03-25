@@ -32,8 +32,8 @@ CORS(app)
 modelMode = True   # True for Yen, False for CR
 if modelMode:
     # yolo = YOLO("yen_3_a.pt")
-    modelName = "task1_ver4.pt"
-    # modelName = "task2_ver4.pt"
+    # modelName = "task1_ver4.pt"
+    modelName = "task2_ver4.pt"
     yolo = YOLO(modelName)
     # yolo = YOLO("yen_2_b.pt")
 imageNameMap = {
@@ -80,8 +80,7 @@ def resetEnv():
 @app.route("/")
 def hello():
     resetEnv()
-    yolo = YOLO(modelName)
-    yolo.predict("../images/examples.jpg", device='cpu')
+    yolo.predict("../images/example.jpg", device='cpu')
     return "API is up and running\n"
 
 # ROUTE - to retrieve path from algo
@@ -197,8 +196,10 @@ def stitchImage():
         images = [Image.open(x) for x in img_paths]
         perRow = ceil(len(images) / 2)
         # width, height = zip(*(i.size for i in images))  # all are 640 x 640
-        total_width = perRow * 640      # instead of sum(width)
-        max_height = 2 * 640            # instead of max(height)
+        # total_width = perRow * 640      # instead of sum(width)
+        # max_height = 2 * 640            # instead of max(height)
+        total_width = perRow * 960      # instead of sum(width)
+        max_height = 2 * 960            # instead of max(height)
 
         stitched_image = Image.new('RGB', (total_width, max_height))
         x_offset = 0
@@ -208,7 +209,7 @@ def stitchImage():
         for im in images:
             if rowCount == perRow:
                 x_offset = 0
-                y_offset = 640
+                y_offset = 960 #640
                 rowCount = 0
             stitched_image.paste(im, (x_offset,y_offset))
             x_offset += 640        # instead of im.size[0] because fixed
@@ -217,7 +218,8 @@ def stitchImage():
         while x_offset != total_width:
             placeholder = Image.open("../images/boxed/placeholder.jpg")
             stitched_image.paste(placeholder, (x_offset, y_offset))
-            x_offset += 640
+            # x_offset += 640
+            x_offset += 960
         
         stitched_path = "../images/boxed/stitched.jpg"
         stitched_image.save(stitched_path)
