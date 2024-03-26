@@ -192,13 +192,13 @@ function moveBack() {
 function moveFrontLeft() {
     oldRobotPos = [...robotPos];
     if (robotPos[2] == 'N') {
-        robotPos = [robotPos[0]+3,robotPos[1]-3,'W'];
+        robotPos = [robotPos[0]+2,robotPos[1]-3,'W'];
     } else if (robotPos[2] == 'E') {
-        robotPos = [robotPos[0]+3,robotPos[1]+3,'N'];
+        robotPos = [robotPos[0]+3,robotPos[1]+2,'N'];
     } else if (robotPos[2] == 'S') {
-        robotPos = [robotPos[0]-3,robotPos[1]+3,'E'];
+        robotPos = [robotPos[0]-2,robotPos[1]+3,'E'];
     } else {
-        robotPos = [robotPos[0]-3,robotPos[1]-3,'S'];
+        robotPos = [robotPos[0]-3,robotPos[1]-2,'S'];
     }
     clearOld(oldRobotPos);
     colorNew("#0000FF", "#AAAAFF");
@@ -207,13 +207,13 @@ function moveFrontLeft() {
 function moveBackLeft() {
     oldRobotPos = [...robotPos];
     if (robotPos[2] == 'N') {
-        robotPos = [robotPos[0]-3,robotPos[1]-3,'E'];
+        robotPos = [robotPos[0]-3,robotPos[1]-2,'E'];
     } else if (robotPos[2] == 'E') {
-        robotPos = [robotPos[0]+3,robotPos[1]-3,'S'];
+        robotPos = [robotPos[0]+2,robotPos[1]-3,'S'];
     } else if (robotPos[2] == 'S') {
-        robotPos = [robotPos[0]+3,robotPos[1]+3,'W'];
+        robotPos = [robotPos[0]+3,robotPos[1]+2,'W'];
     } else {
-        robotPos = [robotPos[0]-3,robotPos[1]+3,'N'];
+        robotPos = [robotPos[0]-2,robotPos[1]+3,'N'];
     }
     clearOld(oldRobotPos);
     colorNew("#0000FF", "#AAAAFF");
@@ -222,13 +222,13 @@ function moveBackLeft() {
 function moveFrontRight() {
     oldRobotPos = [...robotPos];
     if (robotPos[2] == 'N') {
-        robotPos = [robotPos[0]+3,robotPos[1]+3,'E'];
+        robotPos = [robotPos[0]+2,robotPos[1]+3,'E'];
     } else if (robotPos[2] == 'E') {
-        robotPos = [robotPos[0]-3,robotPos[1]+3,'S'];
+        robotPos = [robotPos[0]-3,robotPos[1]+2,'S'];
     } else if (robotPos[2] == 'S') {
-        robotPos = [robotPos[0]-3,robotPos[1]-3,'W'];
+        robotPos = [robotPos[0]-2,robotPos[1]-3,'W'];
     } else {
-        robotPos = [robotPos[0]+3,robotPos[1]-3,'N'];
+        robotPos = [robotPos[0]+3,robotPos[1]-2,'N'];
     }
     clearOld(oldRobotPos);
     colorNew("#0000FF", "#AAAAFF");
@@ -237,13 +237,13 @@ function moveFrontRight() {
 function moveBackRight() {
     oldRobotPos = [...robotPos];
     if (robotPos[2] == 'N') {
-        robotPos = [robotPos[0]-3,robotPos[1]+3,'W'];
+        robotPos = [robotPos[0]-3,robotPos[1]+2,'W'];
     } else if (robotPos[2] == 'E') {
-        robotPos = [robotPos[0]-3,robotPos[1]-3,'N'];
+        robotPos = [robotPos[0]-2,robotPos[1]-3,'N'];
     } else if (robotPos[2] == 'S') {
-        robotPos = [robotPos[0]+3,robotPos[1]-3,'E'];
+        robotPos = [robotPos[0]+3,robotPos[1]-2,'E'];
     } else {
-        robotPos = [robotPos[0]+3,robotPos[1]+3,'S'];
+        robotPos = [robotPos[0]+2,robotPos[1]+3,'S'];
     }
     clearOld(oldRobotPos);
     colorNew("#0000FF", "#AAAAFF");
