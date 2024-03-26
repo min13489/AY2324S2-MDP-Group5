@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    style="@style/Base.Theme.MDPTESTTEST"
+    tools:context=".MainActivity">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <ImageView
+        android:id="@+id/btIcon"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="201dp"
+        android:src="@drawable/ic_bluetooth"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.695"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btn1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:text="Bluetooth Connection" />
+
+
+    <com.example.mdptesttest.MapView
+        android:id="@+id/mapView"
+        android:layout_width="712dp"
+        android:layout_height="656dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="50dp"
+        android:theme="@style/Base.Theme.MDPTESTTEST"/>
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm1"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignBottom="@id/btn1"
+        android:layout_marginStart="50dp"
+        android:layout_marginBottom="-718dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm2"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm1"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm3"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm2"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm4"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm3"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm5"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm4"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm6"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm5"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm7"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm6"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.ObstacleView
+        android:id="@+id/itm8"
+        android:layout_width="29.5dp"
+        android:layout_height="33dp"
+        android:layout_alignRight="@+id/itm7"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="-50dp"
+        android:layout_marginBottom="200.5dp" />
+
+    <com.example.mdptesttest.RobotView
+        android:id="@+id/robot"
+        android:layout_width="89dp"
+        android:layout_height="98dp"
+        android:layout_alignLeft="@+id/btn1"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="-406dp"
+        android:layout_marginBottom="271dp"
+        android:background="@android:color/transparent"/>
+
+    <ImageButton
+        android:id="@+id/btnReset"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_alignBottom="@id/mapView"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="44dp"
+        android:layout_marginBottom="-25dp"
+        android:background="@android:color/transparent"
+        android:scaleType="fitCenter"
+        android:src="@drawable/reset" />
+
+    <TextView
+        android:id="@+id/robotStatus"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="800dp"
+        android:textSize="18sp"
+        android:theme="@style/Base.Theme.MDPTESTTEST"/>
+
+    <ImageButton
+        android:id="@+id/btnStart"
+        android:layout_width="140dp"
+        android:layout_height="235dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="450dp"
+        android:layout_marginTop="700dp"
+        android:background="@android:color/transparent"
+        android:scaleType="fitCenter"
+        android:src="@drawable/play_button" />
+
+    <TextView
+        android:id="@+id/textViewReceivedMessageContent"
+        android:layout_width="400dp"
+        android:layout_height="30dp"
+        android:layout_marginLeft="5dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="800dp"
+        android:background="@drawable/edittext_outline"
+        android:paddingStart="4dp"
+        android:text=""
+        android:textSize="16sp"
+        android:theme="@style/Base.Theme.MDPTESTTEST"/>
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/switchMode"
+        />
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="850dp"
+        android:text="Save"
+        android:scaleType="fitCenter" />
+
+    <Button
+        android:id="@+id/btnLoad"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="200dp"
+        android:layout_marginTop="850dp"
+        android:text="Load"
+        android:scaleType="fitCenter" />
+
+</RelativeLayout>
