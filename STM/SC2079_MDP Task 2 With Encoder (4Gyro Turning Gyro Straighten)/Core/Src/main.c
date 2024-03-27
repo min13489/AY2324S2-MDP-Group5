@@ -38,10 +38,13 @@
 /// Movement controls ///
 #define RPM_LEFT 3500
 #define RPM_RIGHT 3500
+
 // Voltage for IR
 #define ADC_REF 3.3
+
 // Resolution for IR
 #define ADC_STEPS 4096
+
 volatile uint8_t motionCommand = 0;
 volatile uint8_t dirCommand = 0;
 volatile uint8_t distCommand = 0;
@@ -169,20 +172,23 @@ int received = 0;
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// Ultrasonic
+// For Ultrasonic
 uint32_t IC_Val1 = 0;
 uint32_t IC_Val2 = 0;
 uint32_t echo = 0;	// For storing the echo pulse duration
 uint8_t Is_First_Captured = 0;  // is the first value captured ? A flag to ensure that both cases are accounted for
 uint32_t Distance  = 0;	// For storing the distance
 
-
+// For Motor
 int initialPwmValue = 0;
 int encoderL = 0, encoderR = 0;
 float xcm = 0.0, ycm = 0.0;
 int headingint = 0;
 int pwmValL = 0;
 int pwmValR = 0;
+
+// IMU address
+uint8_t ICMAddress = 0x68;
 
 // imu registers
 #define GYRO_ZOUT_H 0x37

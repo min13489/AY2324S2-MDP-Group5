@@ -36,8 +36,6 @@
 /* USER CODE BEGIN PD */
 
 /// Movement controls ///
-#define MOVE_FORWARD 1
-#define MOVE_BACKWARD 2
 #define RPM_LEFT 3500
 #define RPM_RIGHT 3500
 
@@ -151,7 +149,6 @@ HAL_StatusTypeDef IMU_ReadOneByte(IMU_Data *dev, uint8_t reg, uint8_t *data);
 uint8_t * IMU_Initialise(IMU_Data *dev, I2C_HandleTypeDef *i2cHandle, UART_HandleTypeDef *uart);
 float yawAngle = 0;
 volatile uint8_t dma_transfer_complete = 0;
-int16_t Data;
 uint8_t rawData[2];
 
 /* USER CODE END PFP */
@@ -174,25 +171,9 @@ int pwmValR = 0;
 
 // Directions
 uint16_t pwmVal_servo = 139;
-int e_brake = 0;
 
 // Gyro
-double total_angle=0;
-uint8_t gyroBuffer[20];
 uint8_t ICMAddress = 0x68;
-uint8_t initial_angle = 0;
-int final_angle = 0;
-
-// For PID
-int16_t position = 0;     // position of the motor (1 rotation = 260 count)
-//extern int16_t oldpos;    // // see SysTick_Handler in stm32f4xx_it.c
-int16_t speed = 0;        // angle of rotation, in degree resolution = 360 degree/260 tick
-int16_t target_speed = 0; // target angle of rotation,
-int16_t position_target;  // target position
-int16_t error = 5;            // error between target and actual
-int32_t error_area = 0;   // area under error - to calculate I for PI implementation
-int32_t error_old, error_change, error_rate; // to calculate D for PID control
-int32_t millisOld, millisNow, dt; // to calculate I and D for PID control
 
 // imu registers
 #define GYRO_ZOUT_H 0x37
